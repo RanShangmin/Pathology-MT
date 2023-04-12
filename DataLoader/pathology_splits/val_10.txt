@@ -1,0 +1,1 @@
+/images/val/001.tif /annotation/val/001_gt.tif

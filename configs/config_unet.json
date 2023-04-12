@@ -1,0 +1,83 @@
+{
+  "name": "Semi-Seg[dgx, pathology]",
+  "experim_name": "apply",
+  "n_labeled_examples": 10,
+  "num_classes": 2,
+  "ramp_up": 100,
+  "unsupervised_w": 1.0,
+  "reflect_index": [
+    0,
+    255
+  ],
+  "lr_scheduler": "Poly",
+  "use_weak_lables": false,
+  "model": {
+    "supervised": false,
+    "semi": true,
+    "sup_loss": "dice",
+    "un_loss": "semi_dice",
+    "warm_up_epoch": 0
+  },
+  "optimizer": {
+    "type": "Adam",
+    "args": {
+      "lr": 2e-4,
+      "weight_decay": 0
+    }
+  },
+  "train_supervised": {
+    "data_dir": "./DataLoader/pathology_data",
+    "batch_size": 8,
+    "crop_size": 64,
+    "shuffle": true,
+    "base_size": [
+      159,
+      150,
+      150
+    ],
+    "scale": true,
+    "augment": true,
+    "flip": true,
+    "rotate": true,
+    "split": "train_supervised",
+    "num_workers": 8,
+    "type": "w"
+  },
+  "train_unsupervised": {
+    "data_dir": "./DataLoader/pathology_data",
+    "weak_labels_output": "nil",
+    "batch_size": 8,
+    "crop_size": 64,
+    "shuffle": true,
+    "base_size": [
+      159,
+      150,
+      150
+    ],
+    "scale": true,
+    "augment": true,
+    "flip": true,
+    "rotate": true,
+    "split": "train_unsupervised",
+    "num_workers": 8,
+    "type": "w&w"
+  },
+  "val_loader": {
+    "data_dir": "./DataLoader/pathology_data",
+    "batch_size": 1,
+    "val": true,
+    "split": "val_10",
+    "shuffle": false,
+    "num_workers": 4
+  },
+  "trainer": {
+    "epochs": 200,
+    "save_dir": "saved/",
+    "save_period": 1,
+    "log_dir": "saved/",
+    "log_per_iter": 20,
+    "val": true,
+    "val_per_epochs": 10,
+    "sharp_temp": 0.5
+  }
+}
