@@ -1,5 +1,5 @@
 {
-  "name": "Semi-Seg[dgx, pathology]",
+  "name": "Semi-Seg[pathology]",
   "experim_name": "apply",
   "n_labeled_examples": 10,
   "num_classes": 2,
