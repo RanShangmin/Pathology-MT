@@ -15,13 +15,13 @@ class Conv3D_Block(nn.Module):
         self.conv1 = nn.Sequential(
             nn.Conv3d(inp_feat, out_feat, kernel_size=kernel,
                       stride=stride, padding=padding, bias=True),
-            nn.BatchNorm3d(out_feat),
+            nn.InstanceNorm3d(out_feat),
             nn.ReLU())
 
         self.conv2 = nn.Sequential(
             nn.Conv3d(out_feat, out_feat, kernel_size=kernel,
                       stride=stride, padding=padding, bias=True),
-            nn.BatchNorm3d(out_feat),
+            nn.InstanceNorm3d(out_feat),
             nn.ReLU())
 
         self.residual = residual

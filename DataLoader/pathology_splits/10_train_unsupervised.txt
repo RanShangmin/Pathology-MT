@@ -1,1 +1,4 @@
 /images/train/001.tif /annotation/train/001_gt.tif
+/images/train/001.tif /annotation/train/001_gt.tif
+/images/train/001.tif /annotation/train/001_gt.tif
+/images/train/001.tif /annotation/train/001_gt.tif
