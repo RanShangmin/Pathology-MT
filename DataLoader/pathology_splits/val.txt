@@ -1,0 +1,12 @@
+/images/val/020_x002_y002_C2_crop.tif /annotation/val/020_x002_y002_C2_crop_seg.tif
+/images/val/020_x002_y003_C2_crop.tif /annotation/val/020_x002_y003_C2_crop_seg.tif
+/images/val/020_x002_y004_C2_crop.tif /annotation/val/020_x002_y004_C2_crop_seg.tif
+/images/val/020_x003_y002_C2_crop.tif /annotation/val/020_x003_y002_C2_crop_seg.tif
+/images/val/020_x003_y003_C2_crop.tif /annotation/val/020_x003_y003_C2_crop_seg.tif
+/images/val/020_x003_y004_C2_crop.tif /annotation/val/020_x003_y004_C2_crop_seg.tif
+/images/val/021_x002_y002_C2_crop.tif /annotation/val/021_x002_y002_C2_crop_seg.tif
+/images/val/021_x002_y003_C2_crop.tif /annotation/val/021_x002_y003_C2_crop_seg.tif
+/images/val/021_x002_y004_C2_crop.tif /annotation/val/021_x002_y004_C2_crop_seg.tif
+/images/val/021_x003_y002_C2_crop.tif /annotation/val/021_x003_y002_C2_crop_seg.tif
+/images/val/021_x003_y003_C2_crop.tif /annotation/val/021_x003_y003_C2_crop_seg.tif
+/images/val/021_x003_y004_C2_crop.tif /annotation/val/021_x003_y004_C2_crop_seg.tif

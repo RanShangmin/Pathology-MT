@@ -16,7 +16,7 @@ from Utils.param_trans import trans_data
 # Ensure your dataset only contains 3d gray images!
 class BaseDataSet(Dataset):
     def __init__(self, data_dir, split, mean, std, base_size=None, reflect_index=None, augment=True, val=False,
-                 use_weak_lables=False, weak_labels_output=None, crop_size=None, scale=False, flip=False,
+                 use_weak_lables=False, weak_labels_output=None, crop_size=None, scale=False,
                  rotate=False, n_labeled_examples=None, type=None):
 
         self.root = data_dir
@@ -31,11 +31,10 @@ class BaseDataSet(Dataset):
         self.use_weak_lables = use_weak_lables
         self.weak_labels_output = weak_labels_output
         self.type = type
+        self.base_size = base_size
 
         if self.augment:
-            self.base_size = base_size
             self.scale = scale
-            self.flip = flip
             self.rotate = rotate
 
         self.files = []
@@ -138,19 +137,12 @@ class BaseDataSet(Dataset):
         label = label[start_d:end_d, start_h:end_h, start_w:end_w]
         return image, label
 
-    def _flip(self, image, label):
-        # Random H flip
-        if random.random() > 0.5:
-            image = np.fliplr(image).copy()
-            label = np.fliplr(label).copy()
-        return image, label
-
     def _resize(self, image, label, bigger_side_to_base_size=True):
         # return image, label
         if isinstance(self.base_size, int):
             d, h, w = image.shape
             if self.scale:
-                longside = random.randint(int(self.base_size), int(self.base_size * 1.3))
+                longside = random.randint(int(self.base_size), int(self.base_size * 1.5))
                 # longside = random.randint(int(self.base_size*0.5), int(self.base_size*1))
             else:
                 longside = self.base_size
@@ -181,7 +173,7 @@ class BaseDataSet(Dataset):
 
         elif (isinstance(self.base_size, list) or isinstance(self.base_size, tuple)) and len(self.base_size) == 3:
             if self.scale:
-                scale = random.random() * 0.3 + 1  # Scaling between [1, 1.5]
+                scale = random.random() * 0.5 + 1  # Scaling between [1, 1.5]
                 d, h, w = int(self.base_size[0] * scale), int(self.base_size[1] * scale), int(self.base_size[2] * scale)
             else:
                 d, h, w = self.base_size
@@ -246,9 +238,6 @@ class BaseDataSet(Dataset):
 
     def _augmentation(self, image, label):
 
-        if self.flip:
-            image, label = self._flip(image, label)
-
         # image = Image.fromarray(np.float32(image))
         # image = self.jitter_tf(image) if self.jitter else image
 
@@ -264,6 +253,7 @@ class BaseDataSet(Dataset):
             return label
         for index in range(len(self.reflect_index)):
             label[label == self.reflect_index[index]] = index
+        # print(np.max(label))
         return label
 
     def __len__(self):
@@ -291,7 +281,7 @@ class BaseDataSet(Dataset):
             image_wk, image_str, label = self._augmentation(image, label)
             return trans_data(image_wk), trans_data(image_str), label
         else:
-            return None
+            return trans_data(image), trans_data(image), label
 
     def __repr__(self):
         fmt_str = "Dataset: " + self.__class__.__name__ + "\n"

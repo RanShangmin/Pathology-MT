@@ -1,7 +1,8 @@
 {
   "name": "Semi-Seg[pathology]",
-  "experim_name": "apply",
+  "experim_name": "apply_pathology",
   "n_labeled_examples": 10,
+  "in_channel": 1,
   "num_classes": 2,
   "ramp_up": 100,
   "unsupervised_w": 1.0,
@@ -21,8 +22,8 @@
   "optimizer": {
     "type": "Adam",
     "args": {
-      "lr": 2e-4,
-      "weight_decay": 0
+      "lr": 2e-3,
+      "weight_decay": 5e-5
     }
   },
   "train_supervised": {
@@ -31,13 +32,12 @@
     "crop_size": 64,
     "shuffle": true,
     "base_size": [
-      159,
-      150,
-      150
+      75,
+      500,
+      500
     ],
-    "scale": true,
     "augment": true,
-    "flip": true,
+    "scale": true,
     "rotate": true,
     "split": "train_supervised",
     "num_workers": 8,
@@ -50,13 +50,12 @@
     "crop_size": 64,
     "shuffle": true,
     "base_size": [
-      159,
-      150,
-      150
+      75,
+      500,
+      500
     ],
-    "scale": true,
     "augment": true,
-    "flip": true,
+    "scale": true,
     "rotate": true,
     "split": "train_unsupervised",
     "num_workers": 8,
@@ -66,7 +65,7 @@
     "data_dir": "./DataLoader/pathology_data",
     "batch_size": 1,
     "val": true,
-    "split": "val_10",
+    "split": "val",
     "shuffle": false,
     "num_workers": 4
   },

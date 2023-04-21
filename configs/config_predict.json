@@ -1,0 +1,7 @@
+{
+  "in_channel": 1,
+  "num_classes": 2,
+  "data_dir": "./Data/pathology_data",
+  "seg_dir": "./Data/pathology_seg",
+  "state_dir": "./saved/apply/10_Dice_0.7906_model_e430.pth"
+}

@@ -20,10 +20,11 @@ class PathologyDataset(BaseDataSet):
     def _set_files(self):
         # self.root = os.path.join(self.root, 'VOCdevkit/VOC2012')
         prefix = "."
-        if self.split == "val_10":
+        if self.split == "val":
             file_list = os.path.join(prefix, "DataLoader/pathology_splits", f"{self.split}" + ".txt")
         elif self.split in ["train_supervised", "train_unsupervised"]:
-            file_list = os.path.join(prefix, "DataLoader/pathology_splits", f"{self.n_labeled_examples}_{self.split}" + ".txt")
+            file_list = os.path.join(prefix, "DataLoader/pathology_splits",
+                                     f"{self.n_labeled_examples}_{self.split}" + ".txt")
         else:
             raise ValueError(f"Invalid split name {self.split}")
 
@@ -62,4 +63,4 @@ class Pathology(BaseDataLoader):
         else:
             train_sampler = None
         super(Pathology, self).__init__(self.dataset, self.batch_size, shuffle, num_workers, val_split=None,
-                                   sampler=train_sampler)
+                                        sampler=train_sampler)

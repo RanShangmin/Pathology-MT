@@ -85,8 +85,8 @@ class SlidingEval(torch.nn.Module):
             input_data, margin = self.process_image(img, self.crop_size)  # pad image
             with torch.no_grad():
                 input_data = torch.tensor(input_data, dtype=torch.float).cuda().unsqueeze(0)
-                f1, f2, f3, f4 = self.model.module.encoder_t(input_data)
-                score = self.model.module.decoder_t(f1, f2, f3, f4)
+                f1, f2, f3, f4, f5 = self.model.module.encoder_t(input_data)
+                score = self.model.module.decoder_t(f1, f2, f3, f4, f5)
             score = score[:, :, margin[0]:(score.shape[2] - margin[1]),
                     margin[2]:(score.shape[3] - margin[3]),
                     margin[4]:(score.shape[4] - margin[5])]
@@ -123,8 +123,8 @@ class SlidingEval(torch.nn.Module):
                         input_data, tmargin = self.process_image(img_sub, self.crop_size)
                         input_data = torch.tensor(input_data, dtype=torch.float).cuda().unsqueeze(0)
                         with torch.no_grad():
-                            f1, f2, f3, f4 = self.model.module.encoder_t(input_data)
-                            temp_score = self.model.module.decoder_t(f1, f2, f3, f4)
+                            f1, f2, f3, f4, f5 = self.model.module.encoder_t(input_data)
+                            temp_score = self.model.module.decoder_t(f1, f2, f3, f4, f5)
                         temp_score = temp_score[:, :,
                                      tmargin[0]:(temp_score.shape[2] - tmargin[1]),
                                      tmargin[2]:(temp_score.shape[3] - tmargin[3]),

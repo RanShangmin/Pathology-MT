@@ -37,7 +37,7 @@ class Trainer(BaseTrainer):
                                      class_number=self.num_classes)
 
     @torch.no_grad()
-    def update_teachers(self, teacher_encoder, teacher_decoder, keep_rate=0.996):
+    def update_teachers(self, teacher_encoder, teacher_decoder, keep_rate=0.99):
         student_encoder_dict = self.model.module.encoder_s.state_dict()
         student_decoder_dict = self.model.module.decoder_s.state_dict()
         new_teacher_encoder_dict = OrderedDict()
@@ -63,64 +63,14 @@ class Trainer(BaseTrainer):
         teacher_encoder.load_state_dict(new_teacher_encoder_dict, strict=True)
         teacher_decoder.load_state_dict(new_teacher_decoder_dict, strict=True)
 
-    @staticmethod
-    def rand_bbox_2(size, n_boxes=1,
-                    prop_range=(.0, .5)):
-        mask_props = np.random.uniform(prop_range[0], prop_range[1], size=(size[0], n_boxes))
-        # mask_props = np.clip(mask_props, .0, 1.)
-
-        mask_shape = (size[3], size[2])
-        zero_mask = mask_props == 0.0
-        y_props = np.exp(np.random.uniform(low=0.0, high=1.0, size=(size[0], n_boxes)) * np.log(mask_props))
-        x_props = mask_props / y_props
-        fac = np.sqrt(1.0 / n_boxes)
-        y_props *= fac
-        x_props *= fac
-        y_props[zero_mask] = 0
-        x_props[zero_mask] = 0
-        # size[0]*n_boxes*2     1*1*2
-        sizes = np.round(np.stack([y_props, x_props], axis=2) * np.array(mask_shape)[None, None, :])
-        positions = np.round((np.array(mask_shape) - sizes) * np.random.uniform(low=0.0, high=1.0, size=sizes.shape))
-        rectangles = np.append(positions, positions + sizes, axis=2).astype(int)
-        bby1 = rectangles[:, :, 0].squeeze().T
-        bbx1 = rectangles[:, :, 1].squeeze().T
-        bby2 = rectangles[:, :, 2].squeeze().T
-        bbx2 = rectangles[:, :, 3].squeeze().T
-
-        return bbx1, bby1, bbx2, bby2
-
-    def cut_mix(self, labeled_image, labeled_mask,
-                unlabeled_image=None, unlabeled_mask=None):
-
-        mix_unlabeled_image = unlabeled_image.clone()
-        mix_unlabeled_target = unlabeled_mask.clone()
-        unsup_boxes = 3
-        u_rand_index = torch.randint(low=0, high=unlabeled_image.shape[0],
-                                     size=[unsup_boxes, mix_unlabeled_image.shape[0]])
-
-        u_bbx1, u_bby1, u_bbx2, u_bby2 = self.rand_bbox_2(size=unlabeled_image.size(),
-                                                          n_boxes=unsup_boxes, prop_range=(0.25, 0.50))
-
-        for i in range(0, mix_unlabeled_image.shape[0]):
-            for n in range(0, unsup_boxes):
-                mix_unlabeled_image[i, :, u_bbx1[n][i]:u_bbx2[n][i], u_bby1[n][i]:u_bby2[n][i]] = \
-                    unlabeled_image[u_rand_index[n][i], :, u_bbx1[n][i]:u_bbx2[n][i], u_bby1[n][i]:u_bby2[n][i]]
-
-                mix_unlabeled_target[i, :, u_bbx1[n][i]:u_bbx2[n][i], u_bby1[n][i]:u_bby2[n][i]] = \
-                    unlabeled_mask[u_rand_index[n][i], :, u_bbx1[n][i]:u_bbx2[n][i], u_bby1[n][i]:u_bby2[n][i]]
-
-        del unlabeled_image, unlabeled_mask
-
-        return labeled_image, labeled_mask, mix_unlabeled_image, mix_unlabeled_target
-
     def predict_with_out_grad(self, image):
         with torch.no_grad():
             count = image.shape[1]
             predict_target_ul = torch.zeros(image.shape[0], self.num_classes, image.shape[2], image.shape[3],
                                             image.shape[4]).cuda(non_blocking=True)
             for i in range(count):
-                f1, f2, f3, f4 = self.model.module.encoder_t(image[:, i, ...].unsqueeze(dim=1))
-                predict_target_ul = predict_target_ul + self.model.module.decoder_t(f1, f2, f3, f4)
+                f1, f2, f3, f4, f5 = self.model.module.encoder_t(image[:, i, ...].unsqueeze(dim=1))
+                predict_target_ul = predict_target_ul + self.model.module.decoder_t(f1, f2, f3, f4, f5)
 
             predict_target_ul /= count
             if predict_target_ul.shape[-3:] != image.shape[-3:]:
@@ -134,24 +84,6 @@ class Trainer(BaseTrainer):
 
         return predict_target_ul
 
-    # NOTE: the func in here doesn't bring improvements, but stabilize the early stage's training curve.
-    def assist_mask_calculate(self, core_predict, assist_predict, topk=1):
-        _, index = torch.topk(assist_predict, k=topk, dim=1)
-        mask = torch.nn.functional.one_hot(index.squeeze())
-        # k!= 1, sum them
-        mask = mask.sum(dim=1) if topk > 1 else mask
-        if mask.shape[-1] != self.num_classes:
-            expand = torch.zeros(
-                [mask.shape[0], mask.shape[1], mask.shape[2], mask.shape[3], self.num_classes - mask.shape[-1]]).cuda()
-            mask = torch.cat((mask, expand), dim=4)
-        mask = mask.permute(0, 4, 1, 2, 3)
-        # get the topk result of the assist map
-        assist_predict = torch.mul(assist_predict, mask)
-
-        # fullfill with core predict value for the other entries;
-        # as it will be merged based on threshold value
-        assist_predict[torch.where(assist_predict == .0)] = core_predict[torch.where(assist_predict == .0)]
-        return assist_predict
 
     def _warm_up(self, epoch, id):
         self.model.train()
@@ -194,7 +126,7 @@ class Trainer(BaseTrainer):
             del total_loss, cur_losses, outputs
 
             if self.args.local_rank <= 0:
-                tbar.set_description('ID {} Warm ({}) | Ls {:.2f} |'.format(id, epoch, self.loss_sup.average))
+                tbar.set_description('ID {} Warm ({}) | Ls {:.2f} |'.format(id, epoch + 1, self.loss_sup.average))
 
         return
 
@@ -216,8 +148,8 @@ class Trainer(BaseTrainer):
             if self.mode == "semi":
                 (_, input_l, target_l), (input_ul_wk, input_ul_str, target_ul) = next(dataloader)
                 input_ul_wk, input_ul_str, target_ul = input_ul_wk.cuda(non_blocking=True), \
-                                                       input_ul_str.cuda(non_blocking=True), \
-                                                       target_ul.cuda(non_blocking=True)
+                    input_ul_str.cuda(non_blocking=True), \
+                    target_ul.cuda(non_blocking=True)
             else:
                 (_, input_l, target_l), _ = next(dataloader)
                 input_ul_wk, input_ul_str, target_ul = None, None, None

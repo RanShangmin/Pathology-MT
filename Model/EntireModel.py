@@ -25,11 +25,11 @@ class EntireModel(BaseModel):
 
     def warm_up_forward(self, id, x, y):
         if id == 1:
-            f1, f2, f3, f4 = self.encoder_t(x)
-            output_l = self.decoder_t(f1, f2, f3, f4)
+            f1, f2, f3, f4, f5 = self.encoder_t(x)
+            output_l = self.decoder_t(f1, f2, f3, f4, f5)
         else:
-            f1, f2, f3, f4 = self.encoder_s(x)
-            output_l = self.decoder_s(f1, f2, f3, f4)
+            f1, f2, f3, f4, f5 = self.encoder_s(x)
+            output_l = self.decoder_s(f1, f2, f3, f4, f5)
 
         # unique, count = np.unique(y.cpu().numpy(), return_counts=True)
         # data_count = dict(zip(unique, count))
@@ -44,8 +44,8 @@ class EntireModel(BaseModel):
                 warm_up=False, semi_p_th=0.6, semi_n_th=0.6):
         if warm_up:
             return self.warm_up_forward(id=id, x=x_l, y=target_l)
-        f1, f2, f3, f4 = self.encoder_s(x_l)
-        output_l = self.decoder_s(f1, f2, f3, f4, t_model=self.decoder_t)
+        f1, f2, f3, f4, f5 = self.encoder_s(x_l)
+        output_l = self.decoder_s(f1, f2, f3, f4, f5, t_model=self.decoder_t)
         # output_l = self.decoder_s(self.encoder_s(x_l), t_model=self.decoder_t)
         # Supervised loss
         loss_sup = self.sup_loss(output_l, target_l, num_classes=self.num_classes)
@@ -54,8 +54,8 @@ class EntireModel(BaseModel):
 
         curr_losses = {'loss_sup': loss_sup}
         # output_ul = self.decoder_s(self.encoder_s(x_ul), t_model=self.decoder_t)
-        f1, f2, f3, f4 = self.encoder_s(x_ul)
-        output_ul = self.decoder_s(f1, f2, f3, f4, t_model=self.decoder_t)
+        f1, f2, f3, f4, f5 = self.encoder_s(x_ul)
+        output_ul = self.decoder_s(f1, f2, f3, f4, f5, t_model=self.decoder_t)
         loss_unsup, pass_rate, neg_loss = self.unsuper_loss(inputs=output_ul, targets=target_ul,
                                                             conf_mask=True, threshold=semi_p_th,
                                                             threshold_neg=semi_n_th, num_classes=self.num_classes)

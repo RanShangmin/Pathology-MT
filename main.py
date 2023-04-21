@@ -99,14 +99,13 @@ def main(gpu, ngpus_per_node, config, args):
     else:
         raise NotImplementedError
 
-    model = Model(in_channel=1,
+    model = Model(in_channel=config['in_channel'],
                   num_classes=config['num_classes'],
                   sup_loss=sup_loss, cons_w_unsup=cons_w_unsup, unsup_loss=unsup_loss, )
 
     if args.local_rank <= 0:
         wandb_run = Tensorboard(config=config, online=True)
 
-    # TODO eval_epoch代码修改
     trainer = Trainer(model=model,
                       config=config,
                       supervised_loader=supervised_loader,

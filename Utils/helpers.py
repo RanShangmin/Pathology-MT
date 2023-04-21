@@ -22,6 +22,9 @@ def group_weight(weight_group, module, lr):
                 group_no_decay.append(m.weight)
             if m.bias is not None:
                 group_no_decay.append(m.bias)
+        elif isinstance(m, nn.PReLU):
+            if m.weight is not None:
+                group_no_decay.append(m.weight)
         elif isinstance(m, nn.Parameter):
             group_decay.append(m)
         elif isinstance(m, nn.Embedding):
