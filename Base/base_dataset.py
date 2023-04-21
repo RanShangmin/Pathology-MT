@@ -187,7 +187,7 @@ class BaseDataSet(Dataset):
             raise ValueError
 
     def _data_aug(self, image, flag="weak"):
-        scale_intensity = RandScaleIntensity(0.1)
+        scale_intensity = RandScaleIntensity(0.05)
         weak_aug = scale_intensity(image)
         if self.type == "w&w":
             weak_aug = np.stack((weak_aug, scale_intensity(image)))
@@ -207,23 +207,23 @@ class BaseDataSet(Dataset):
 
             strong_aug = image
 
-            if random.random() < 0.5:
+            if random.random() < 0.2:
                 strong_aug = shift_intensity(strong_aug)
 
-            if random.random() < 0.5:
+            if random.random() < 0.2:
                 strong_aug = shift_histogram(strong_aug)
 
-            if random.random() < 0.5:
+            if random.random() < 0.2:
                 strong_aug = color_jitter(strong_aug)
 
-            if random.random() < 0.5:
+            if random.random() < 0.2:
                 strong_aug = smooth_image(strong_aug)
 
-            if random.random() < 0.5:
+            if random.random() < 0.2:
                 # strong_aug = blurring_image(strong_aug)
                 strong_aug = blurring_image(strong_aug)
 
-            if random.random() < 0.5:
+            if random.random() < 0.2:
                 strong_aug = add_noise(strong_aug)
 
             return weak_aug, strong_aug
