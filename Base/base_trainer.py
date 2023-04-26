@@ -8,8 +8,8 @@ import torch.distributed as dist
 from itertools import chain
 from Utils.helpers import group_weight
 
-# from dgx.download_to_pvc import *
 
+# from dgx.download_to_pvc import *
 
 
 # from utils.htmlwriter import HTML
@@ -106,7 +106,7 @@ class BaseTrainer:
                 dist.barrier()
 
             if epoch % self.config['trainer']['val_per_epochs'] == 0 or \
-                    epoch > int(3 / 4 * (self.epochs + 1)):
+                    epoch > int(19 / 20 * (self.epochs + 1)):
                 results = self._valid_epoch(max(0, epoch))
                 if self.args.local_rank <= 0:
                     self.logger.info('\n\n')

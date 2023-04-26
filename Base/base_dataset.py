@@ -15,14 +15,12 @@ from Utils.param_trans import trans_data
 
 # Ensure your dataset only contains 3d gray images!
 class BaseDataSet(Dataset):
-    def __init__(self, data_dir, split, mean, std, base_size=None, reflect_index=None, augment=True, val=False,
+    def __init__(self, data_dir, split, weak_times=1, base_size=None, reflect_index=None, augment=True, val=False,
                  use_weak_lables=False, weak_labels_output=None, crop_size=None, scale=False,
-                 rotate=False, n_labeled_examples=None, type=None):
+                 rotate=False, n_labeled_examples=None):
 
         self.root = data_dir
         self.split = split
-        self.mean = mean
-        self.std = std
         self.augment = augment
         self.crop_size = crop_size
         self.n_labeled_examples = n_labeled_examples
@@ -30,7 +28,7 @@ class BaseDataSet(Dataset):
         self.reflect_index = reflect_index
         self.use_weak_lables = use_weak_lables
         self.weak_labels_output = weak_labels_output
-        self.type = type
+        self.weak_times = weak_times
         self.base_size = base_size
 
         if self.augment:
@@ -57,7 +55,7 @@ class BaseDataSet(Dataset):
         :return: rotated tensor.
         """
         device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-        if type(image) is np.ndarray:
+        if isinstance(image, np.ndarray):
             image = torch.from_numpy(image)
             # X = X.float()
 
@@ -187,10 +185,11 @@ class BaseDataSet(Dataset):
             raise ValueError
 
     def _data_aug(self, image, flag="weak"):
-        scale_intensity = RandScaleIntensity(0.05)
-        weak_aug = scale_intensity(image)
-        if self.type == "w&w":
-            weak_aug = np.stack((weak_aug, scale_intensity(image)))
+        add_noise = RandGaussianNoise(std=0.05)
+        weak_aug = add_noise(image)
+        for _ in range(self.weak_times - 1):
+            weak_aug = np.stack((weak_aug, add_noise(image)))
+
         if flag == "weak":
             return weak_aug
 
@@ -199,6 +198,7 @@ class BaseDataSet(Dataset):
             # kernel_size = kernel_size + 1 if kernel_size % 2 == 0 else kernel_size
             # blurring_image = transforms.GaussianBlur(kernel_size, sigma=(0.1, 2.0))
             shift_intensity = RandStdShiftIntensity(0.2)
+            scale_intensity = RandScaleIntensity(0.2)
             shift_histogram = RandHistogramShift()
             smooth_image = RandGaussianSmooth()
             blurring_image = RandGaussianSharpen()
@@ -207,23 +207,26 @@ class BaseDataSet(Dataset):
 
             strong_aug = image
 
-            if random.random() < 0.2:
+            if random.random() < 0.1:
                 strong_aug = shift_intensity(strong_aug)
 
-            if random.random() < 0.2:
+            if random.random() < 0.1:
+                strong_aug = scale_intensity(strong_aug)
+
+            if random.random() < 0.1:
                 strong_aug = shift_histogram(strong_aug)
 
-            if random.random() < 0.2:
+            if random.random() < 0.1:
                 strong_aug = color_jitter(strong_aug)
 
-            if random.random() < 0.2:
+            if random.random() < 0.1:
                 strong_aug = smooth_image(strong_aug)
 
-            if random.random() < 0.2:
+            if random.random() < 0.1:
                 # strong_aug = blurring_image(strong_aug)
                 strong_aug = blurring_image(strong_aug)
 
-            if random.random() < 0.2:
+            if random.random() < 0.1:
                 strong_aug = add_noise(strong_aug)
 
             return weak_aug, strong_aug

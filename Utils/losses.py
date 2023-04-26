@@ -153,3 +153,11 @@ def semi_dice_loss(inputs, targets,
             return positive_loss_mat[mask].mean(), pass_rate, negative_loss_mat[mask_neg].mean()
     else:
         raise NotImplementedError
+
+
+def softmax_mse_loss(input, target):
+    assert input.shape == target.shape
+    input_softmax = F.softmax(input, dim=1)
+    target_softmax = F.softmax(target, dim=1)
+    loss_fn = nn.MSELoss()
+    return loss_fn(input_softmax, target_softmax)

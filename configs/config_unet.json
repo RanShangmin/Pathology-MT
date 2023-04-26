@@ -6,6 +6,7 @@
   "num_classes": 2,
   "ramp_up": 100,
   "unsupervised_w": 1.0,
+  "weak_times": 2,
   "reflect_index": [
     0,
     255
@@ -17,13 +18,14 @@
     "semi": true,
     "sup_loss": "dice",
     "un_loss": "semi_dice",
+    "f_loss": "soft_mse",
     "warm_up_epoch": 0
   },
   "optimizer": {
     "type": "Adam",
     "args": {
-      "lr": 1e-3,
-      "weight_decay": 2e-5
+      "lr": 1.5e-3,
+      "weight_decay": 1.5e-5
     }
   },
   "train_supervised": {
@@ -40,8 +42,7 @@
     "scale": true,
     "rotate": true,
     "split": "train_supervised",
-    "num_workers": 8,
-    "type": "w"
+    "num_workers": 8
   },
   "train_unsupervised": {
     "data_dir": "./DataLoader/pathology_data",
@@ -58,8 +59,7 @@
     "scale": true,
     "rotate": true,
     "split": "train_unsupervised",
-    "num_workers": 8,
-    "type": "w&w"
+    "num_workers": 8
   },
   "val_loader": {
     "data_dir": "./DataLoader/pathology_data",

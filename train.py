@@ -27,10 +27,11 @@ class Trainer(BaseTrainer):
         self.log_step = config['trainer'].get('log_per_iter', int(np.sqrt(self.val_loader.batch_size)))
         if config['trainer']['log_per_iter']:
             self.log_step = int(self.log_step / self.val_loader.batch_size) + 1
-        self.num_classes = self.val_loader.dataset.num_classes
+        self.num_classes = config['num_classes']
+        self.weak_times = config['weak_times']
         self.mode = self.model.module.mode
         self.evaluator = SlidingEval(model=self.model,
-                                     crop_size=64,
+                                     crop_size=config['train_unsupervised']['crop_size'],
                                      stride_rate=2 / 3,
                                      device="cuda:0" if self.args.local_rank < 0 else
                                      "cuda:{}".format(self.args.local_rank),
@@ -63,17 +64,31 @@ class Trainer(BaseTrainer):
         teacher_encoder.load_state_dict(new_teacher_encoder_dict, strict=True)
         teacher_decoder.load_state_dict(new_teacher_decoder_dict, strict=True)
 
-    def predict_with_out_grad(self, image):
+    def predict_with_out_grad(self, images):
         with torch.no_grad():
-            count = image.shape[1]
-            predict_target_ul = torch.zeros(image.shape[0], self.num_classes, image.shape[2], image.shape[3],
-                                            image.shape[4]).cuda(non_blocking=True)
-            for i in range(count):
-                f1, f2, f3, f4, f5 = self.model.module.encoder_t(image[:, i, ...].unsqueeze(dim=1))
+            predict_target_ul = torch.zeros(images.shape[0], self.num_classes, images.shape[2], images.shape[3],
+                                            images.shape[4]).cuda(non_blocking=True)
+            features = []
+            for i in range(self.weak_times):
+                f1, f2, f3, f4, f5 = self.model.module.encoder_t(images[:, i, ...].unsqueeze(dim=1))
+                if len(features) == 0:
+                    features.append(f1.clone())
+                    features.append(f2.clone())
+                    features.append(f3.clone())
+                    features.append(f4.clone())
+                    features.append(f5.clone())
+                else:
+                    features[0] += f1.clone()
+                    features[1] += f2.clone()
+                    features[2] += f3.clone()
+                    features[3] += f4.clone()
+                    features[4] += f5.clone()
                 predict_target_ul = predict_target_ul + self.model.module.decoder_t(f1, f2, f3, f4, f5)
 
-            predict_target_ul /= count
-            if predict_target_ul.shape[-3:] != image.shape[-3:]:
+            for feature in features:
+                feature /= self.weak_times
+            predict_target_ul /= self.weak_times
+            if predict_target_ul.shape[-3:] != images.shape[-3:]:
                 # predict_target_ul = torch.nn.functional.interpolate(predict_target_ul,
                 #                                                     size=(
                 #                                                         image.shape[-3], image.shape[-2],
@@ -82,8 +97,7 @@ class Trainer(BaseTrainer):
                 #                                                     align_corners=True)
                 raise ValueError
 
-        return predict_target_ul
-
+        return predict_target_ul, features
 
     def _warm_up(self, epoch, id):
         self.model.train()
@@ -159,11 +173,11 @@ class Trainer(BaseTrainer):
 
             # predicted unlabeled data
             if self.mode == "semi":
-                t_prob = self.predict_with_out_grad(input_ul_wk)
+                t_prob, t_feat = self.predict_with_out_grad(input_ul_wk)
 
-                predict_target_ul = t_prob
+                predict_target_ul, predict_features_ul = t_prob, t_feat
             else:
-                predict_target_ul = None
+                predict_target_ul, predict_features_ul = None, []
 
             origin_predict = predict_target_ul.detach().clone()
 
@@ -181,9 +195,11 @@ class Trainer(BaseTrainer):
             total_loss, cur_losses, outputs = self.model(x_l=input_l, target_l=target_l,
                                                          x_ul=input_ul_str,
                                                          target_ul=predict_target_ul,
+                                                         teacher_features=predict_features_ul,
                                                          curr_iter=batch_idx, epoch=epoch - 1, id=id,
                                                          semi_p_th=self.args.semi_p_th,
                                                          semi_n_th=self.args.semi_n_th)
+
             total_loss = total_loss.mean()
 
             self.optimizer_s.zero_grad()
@@ -212,8 +228,9 @@ class Trainer(BaseTrainer):
                     self.tensor_board.upload_single_info({f"learning_rate": self.optimizer_s.param_groups[0]['lr']})
                     self.tensor_board.upload_single_info({"ramp_up": self.model.module.unsup_loss_w.current_rampup})
 
-                tbar.set_description('ID {} T ({}) | Ls {:.3f} Lu {:.3f} Ds {:.3f} Du {:.3f}|'.format(
-                    id, epoch, self.loss_sup.average, self.loss_unsup.average, self.dc_l, self.dc_ul))
+                tbar.set_description('ID {} T ({}) | Ls {:.3f} Lu {:.3f} Lf {:.3f} Ds {:.3f} Du {:.3f}|'.format(
+                    id, epoch, self.loss_sup.average, self.loss_unsup.average, self.loss_f.average, self.dc_l,
+                    self.dc_ul))
 
             if self.args.ddp:
                 dist.barrier()
@@ -323,6 +340,7 @@ class Trainer(BaseTrainer):
     def _reset_metrics(self):
         self.loss_sup = AverageMeter()
         self.loss_unsup = AverageMeter()
+        self.loss_f = AverageMeter()
         self.dc_l, self.dc_ul = .0, .0
         self.hd95_l, self.hd95_ul = .0, .0
         self.sst_l, self.sst_ul = .0, .0
@@ -332,6 +350,8 @@ class Trainer(BaseTrainer):
             self.loss_sup.update(cur_losses['loss_sup'].mean().item())
         if "loss_unsup" in cur_losses.keys():
             self.loss_unsup.update(cur_losses['loss_unsup'].mean().item())
+        if "loss_f" in cur_losses.keys():
+            self.loss_f.update(cur_losses['loss_f'].mean().item())
 
     def _compute_evaluation_index(self, outputs, target_l, target_ul, sup=False):
         self.dc_l = dc(trans_predict(outputs['sup_pred']), trans_type(target_l))

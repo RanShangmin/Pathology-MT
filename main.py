@@ -8,6 +8,7 @@ from Utils.losses import *
 from DataLoader.pathology import Pathology
 import torch.distributed as dist
 import torch.multiprocessing as mp
+import torch.nn as nn
 from Utils.tensor_board import Tensorboard
 from Model.EntireModel import EntireModel as model_deep
 
@@ -64,10 +65,14 @@ def main(gpu, ngpus_per_node, config, args):
     config['train_supervised']['n_labeled_examples'] = config['n_labeled_examples']
     config['train_unsupervised']['n_labeled_examples'] = config['n_labeled_examples']
     config['train_unsupervised']['use_weak_lables'] = config['use_weak_lables']
+    config['train_unsupervised']['weak_times'] = config['weak_times']
 
+    config['train_supervised']['num_classes'] = config['num_classes']
+    config['train_unsupervised']['num_classes'] = config['num_classes']
     config['train_supervised']['reflect_index'] = config['reflect_index']
     config['train_unsupervised']['reflect_index'] = config['reflect_index']
     config['val_loader']['reflect_index'] = config['reflect_index']
+    config['val_loader']['num_classes'] = config['num_classes']
 
     supervised_loader = Pathology(config['train_supervised'], ddp_training=args.ddp, dgx=args.dgx)
     unsupervised_loader = Pathology(config['train_unsupervised'], ddp_training=args.ddp, dgx=args.dgx)
@@ -88,6 +93,12 @@ def main(gpu, ngpus_per_node, config, args):
     else:
         raise NotImplementedError
 
+    # FEATURE LOSS
+    if config['model']['f_loss'] == 'soft_mse':
+        f_loss = softmax_mse_loss
+    else:
+        raise NotImplementedError
+
     cons_w_unsup = consistency_weight(final_w=config['unsupervised_w'], iters_per_epoch=len(unsupervised_loader),
                                       rampup_starts=0, rampup_ends=config['ramp_up'], ramp_type="cosine_rampup")
 
@@ -101,7 +112,7 @@ def main(gpu, ngpus_per_node, config, args):
 
     model = Model(in_channel=config['in_channel'],
                   num_classes=config['num_classes'],
-                  sup_loss=sup_loss, cons_w_unsup=cons_w_unsup, unsup_loss=unsup_loss, )
+                  sup_loss=sup_loss, cons_w_unsup=cons_w_unsup, unsup_loss=unsup_loss, f_loss=f_loss)
 
     if args.local_rank <= 0:
         wandb_run = Tensorboard(config=config, online=True)
@@ -134,6 +145,8 @@ if __name__ == '__main__':
     parser.add_argument('--warm_up', default=0, type=int)
 
     parser.add_argument('--labeled_examples', default=10, type=int)
+
+    parser.add_argument('--weak_times', default=2, type=int)
 
     # parser.add_argument('-lr', '--learning-rate', default=4.5e-3, type=float,
     #                     help='Default HEAD Learning same as Others'
@@ -181,6 +194,7 @@ if __name__ == '__main__':
     config['train_unsupervised']['batch_size'] = args.batch_size
     config['model']['warm_up_epoch'] = args.warm_up
     config['n_labeled_examples'] = args.labeled_examples
+    config['weak_times'] = args.weak_times
 
     args.ddp = True if args.gpus > 1 else False
 
