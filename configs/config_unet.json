@@ -6,6 +6,8 @@
   "num_classes": 2,
   "ramp_up": 100,
   "unsupervised_w": 1.0,
+  "feature_w": 1.0,
+  "vat_w": 1.0,
   "weak_times": 2,
   "reflect_index": [
     0,
@@ -18,7 +20,7 @@
     "semi": true,
     "sup_loss": "dice",
     "un_loss": "semi_dice",
-    "f_loss": "soft_mse",
+    "f_loss": "mse",
     "warm_up_epoch": 0
   },
   "optimizer": {

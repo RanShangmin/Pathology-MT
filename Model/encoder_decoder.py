@@ -205,15 +205,15 @@ class VATDecoderNetwork(nn.Module):
         super(VATDecoderNetwork, self).__init__()
         self.decoder = DecoderNetwork(num_classes)
 
-    def forward(self, f1, f2, f3, f4, f5, t_model=None):
+    def forward(self, f1, f2, f3, f4, f5, t_model=None, cur_w=.0):
         if t_model is not None:
             r_adv_1, r_adv_2, r_adv_3, r_adv_4, r_adv_5 = get_r_adv_t_mul(f1, f2, f3, f4, f5, t_model, it=1, xi=1e-6,
                                                                           eps=2.0)
-            f1 = f1 + r_adv_1
-            f2 = f2 + r_adv_2
-            f3 = f3 + r_adv_3
-            f4 = f4 + r_adv_4
-            f5 = f5 + r_adv_5
+            f1 = f1 + r_adv_1 * cur_w
+            f2 = f2 + r_adv_2 * cur_w
+            f3 = f3 + r_adv_3 * cur_w
+            f4 = f4 + r_adv_4 * cur_w
+            f5 = f5 + r_adv_5 * cur_w
 
         pred = self.decoder(f1, f2, f3, f4, f5)
         return pred

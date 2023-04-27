@@ -5,7 +5,8 @@ from Model.encoder_decoder import *
 
 
 class EntireModel(BaseModel):
-    def __init__(self, in_channel, num_classes, sup_loss=None, cons_w_unsup=None, unsup_loss=None, f_loss=None):
+    def __init__(self, in_channel, num_classes, sup_loss=None, cons_w_unsup=None, unsup_loss=None, f_loss=None,
+                 cons_w_f=None, w_vat=None):
         super(EntireModel, self).__init__()
         self.encoder_t = EncoderNetwork(in_channel)
         self.decoder_t = TDecoderNetwork(num_classes)
@@ -15,7 +16,9 @@ class EntireModel(BaseModel):
         self.sup_loss = sup_loss
         self.unsup_loss_w = cons_w_unsup
         self.unsuper_loss = unsup_loss
+        self.f_loss_w = cons_w_f
         self.f_loss = f_loss
+        self.vat_w = w_vat
         self.num_classes = num_classes
 
     def freeze_teachers_parameters(self):
@@ -46,7 +49,8 @@ class EntireModel(BaseModel):
         if warm_up:
             return self.warm_up_forward(id=id, x=x_l, y=target_l)
         f1, f2, f3, f4, f5 = self.encoder_s(x_l)
-        output_l = self.decoder_s(f1, f2, f3, f4, f5, t_model=self.decoder_t)
+        output_l = self.decoder_s(f1, f2, f3, f4, f5, t_model=self.decoder_t,
+                                  cur_w=self.vat_w(epoch=epoch, curr_iter=curr_iter))
         # output_l = self.decoder_s(self.encoder_s(x_l), t_model=self.decoder_t)
         # Supervised loss
         loss_sup = self.sup_loss(output_l, target_l, num_classes=self.num_classes)
@@ -81,6 +85,7 @@ class EntireModel(BaseModel):
         total_loss = loss_unsup + loss_sup
 
         if loss_f is not None:
+            loss_f = loss_f * self.f_loss_w(epoch=epoch, curr_iter=curr_iter)
             total_loss = total_loss + loss_f
             curr_losses['loss_f'] = loss_f
 

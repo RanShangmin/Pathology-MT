@@ -94,13 +94,19 @@ def main(gpu, ngpus_per_node, config, args):
         raise NotImplementedError
 
     # FEATURE LOSS
-    if config['model']['f_loss'] == 'soft_mse':
-        f_loss = softmax_mse_loss
+    if config['model']['f_loss'] == 'mse':
+        f_loss = mse_loss
     else:
         raise NotImplementedError
 
     cons_w_unsup = consistency_weight(final_w=config['unsupervised_w'], iters_per_epoch=len(unsupervised_loader),
                                       rampup_starts=0, rampup_ends=config['ramp_up'], ramp_type="cosine_rampup")
+
+    cons_w_f = consistency_weight(final_w=config['feature_w'], iters_per_epoch=len(unsupervised_loader),
+                                  rampup_starts=0, rampup_ends=config['ramp_up'], ramp_type="cosine_rampup")
+
+    w_vat = consistency_weight(final_w=config['vat_w'], iters_per_epoch=len(unsupervised_loader),
+                               rampup_starts=0, rampup_ends=config['ramp_up'], ramp_type="cosine_rampup")
 
     if args.architecture == "unet":
         Model = model_deep
@@ -112,7 +118,8 @@ def main(gpu, ngpus_per_node, config, args):
 
     model = Model(in_channel=config['in_channel'],
                   num_classes=config['num_classes'],
-                  sup_loss=sup_loss, cons_w_unsup=cons_w_unsup, unsup_loss=unsup_loss, f_loss=f_loss)
+                  sup_loss=sup_loss, cons_w_unsup=cons_w_unsup, unsup_loss=unsup_loss, f_loss=f_loss, cons_w_f=cons_w_f,
+                  w_vat=w_vat)
 
     if args.local_rank <= 0:
         wandb_run = Tensorboard(config=config, online=True)

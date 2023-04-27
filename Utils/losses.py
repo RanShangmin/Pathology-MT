@@ -76,7 +76,7 @@ def dice_loss(predict, target, num_classes=2):
     # print("target: ",data_count)
 
     target = trans_target(target, num_classes=num_classes)
-    criterion = monai.losses.DiceCELoss(sigmoid=True, lambda_ce=1.0, lambda_dice=1.0)
+    criterion = monai.losses.DiceFocalLoss(sigmoid=True, lambda_focal=1.0, lambda_dice=1.0)
 
     # unique, count = np.unique(predict.detach().max(1)[1].cpu().numpy(), return_counts=True)
     # data_count = dict(zip(unique, count))
@@ -141,10 +141,12 @@ def semi_dice_loss(inputs, targets,
             return inputs.sum() * .0, pass_rate, negative_loss_mat[mask_neg].mean()
         else:
             targets = trans_target(torch.argmax(F.softmax(targets, dim=1), dim=1), num_classes=num_classes)
-            loss = monai.losses.DiceCELoss(sigmoid=True)
-            positive_loss_mat = loss(inputs, targets).mean()
+            loss = monai.losses.DiceFocalLoss(sigmoid=True, reduction="none")
+            positive_loss_mat = loss(inputs, targets).sum(dim=1)
             # positive_loss_mat = F.cross_entropy(inputs, torch.argmax(targets, dim=1), reduction="none")
 
+            # print("positive_loss_mat shape: ", positive_loss_mat.shape)
+            # print("weight shape: ", weight.shape)
             positive_loss_mat = positive_loss_mat * weight
 
             neg_prediction_prob = torch.clamp(1 - F.softmax(inputs, dim=1), min=1e-7, max=1.)
@@ -161,3 +163,9 @@ def softmax_mse_loss(input, target):
     target_softmax = F.softmax(target, dim=1)
     loss_fn = nn.MSELoss()
     return loss_fn(input_softmax, target_softmax)
+
+
+def mse_loss(input, target):
+    assert input.shape == target.shape
+    loss_fn = nn.MSELoss()
+    return loss_fn(input, target)
