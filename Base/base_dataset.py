@@ -185,7 +185,7 @@ class BaseDataSet(Dataset):
             raise ValueError
 
     def _data_aug(self, image, flag="weak"):
-        add_noise = RandGaussianNoise(std=0.05)
+        add_noise = RandGaussianNoise(std=0.02)
         weak_aug = add_noise(image)
         for _ in range(self.weak_times - 1):
             weak_aug = np.stack((weak_aug, add_noise(image)))
@@ -197,8 +197,8 @@ class BaseDataSet(Dataset):
             # kernel_size = int(random.random() * 4.95)
             # kernel_size = kernel_size + 1 if kernel_size % 2 == 0 else kernel_size
             # blurring_image = transforms.GaussianBlur(kernel_size, sigma=(0.1, 2.0))
-            shift_intensity = RandStdShiftIntensity(0.2)
-            scale_intensity = RandScaleIntensity(0.2)
+            shift_intensity = RandStdShiftIntensity(0.1)
+            scale_intensity = RandScaleIntensity(0.1)
             shift_histogram = RandHistogramShift()
             smooth_image = RandGaussianSmooth()
             blurring_image = RandGaussianSharpen()

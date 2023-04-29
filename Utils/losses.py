@@ -76,7 +76,7 @@ def dice_loss(predict, target, num_classes=2):
     # print("target: ",data_count)
 
     target = trans_target(target, num_classes=num_classes)
-    criterion = monai.losses.DiceFocalLoss(sigmoid=True, lambda_focal=1.0, lambda_dice=1.0)
+    criterion = monai.losses.DiceCELoss(sigmoid=True, lambda_ce=1.0, lambda_dice=1.0)
 
     # unique, count = np.unique(predict.detach().max(1)[1].cpu().numpy(), return_counts=True)
     # data_count = dict(zip(unique, count))
@@ -141,8 +141,10 @@ def semi_dice_loss(inputs, targets,
             return inputs.sum() * .0, pass_rate, negative_loss_mat[mask_neg].mean()
         else:
             targets = trans_target(torch.argmax(F.softmax(targets, dim=1), dim=1), num_classes=num_classes)
-            loss = monai.losses.DiceFocalLoss(sigmoid=True, reduction="none")
-            positive_loss_mat = loss(inputs, targets).sum(dim=1)
+            loss_dice = monai.losses.DiceLoss(sigmoid=True, reduction="none")
+            positive_loss_mat = loss_dice(inputs, targets).sum(dim=1) + F.cross_entropy(inputs,
+                                                                                        torch.argmax(targets, dim=1),
+                                                                                        reduction="none")
             # positive_loss_mat = F.cross_entropy(inputs, torch.argmax(targets, dim=1), reduction="none")
 
             # print("positive_loss_mat shape: ", positive_loss_mat.shape)

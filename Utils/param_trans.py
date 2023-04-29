@@ -32,8 +32,8 @@ def trans_type(data):
     assert isinstance(data, torch.Tensor) or isinstance(data, np.ndarray)
     if isinstance(data, torch.Tensor):
         data = data.cpu().numpy()
-    if 0 == np.count_nonzero(data):
-        data[0, 0, 0, 0] = 1
+    # if 0 == np.count_nonzero(data):
+    #     data[0, 0, 0, 0] = 1
 
     # unique, count = np.unique(data, return_counts=True)
     # data_count = dict(zip(unique, count))

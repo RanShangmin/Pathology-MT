@@ -278,7 +278,7 @@ class Trainer(BaseTrainer):
                 # correct, labeled, inter, union = eval_metrics(output, target, self.num_classes)
 
                 cur_dc = dc(trans_predict(output), trans_type(target))
-                cur_hd95 = hd95(trans_predict(output), trans_type(target))
+                cur_hd95 = self._cal_hd95(trans_predict(output), trans_type(target))
                 cur_sst = sensitivity(trans_predict(output), trans_type(target))
 
                 # print(cur_dc, cur_hd95, cur_sst)
@@ -355,7 +355,7 @@ class Trainer(BaseTrainer):
 
     def _compute_evaluation_index(self, outputs, target_l, target_ul, sup=False):
         self.dc_l = dc(trans_predict(outputs['sup_pred']), trans_type(target_l))
-        self.hd95_l = hd95(trans_predict(outputs['sup_pred']), trans_type(target_l))
+        self.hd95_l = self._cal_hd95(trans_predict(outputs['sup_pred']), trans_type(target_l))
         self.sst_l = sensitivity(trans_predict(outputs['sup_pred']), trans_type(target_l))
 
         if sup:
@@ -363,7 +363,7 @@ class Trainer(BaseTrainer):
 
         if self.mode == 'semi':
             self.dc_ul = dc(trans_predict(outputs['unsup_pred']), trans_type(target_ul))
-            self.hd95_ul = hd95(trans_predict(outputs['unsup_pred']), trans_type(target_ul))
+            self.hd95_ul = self._cal_hd95(trans_predict(outputs['unsup_pred']), trans_type(target_ul))
             self.sst_ul = sensitivity(trans_predict(outputs['unsup_pred']), trans_type(target_ul))
 
     def _log_values(self, cur_losses):
@@ -394,3 +394,12 @@ class Trainer(BaseTrainer):
                 self.tensor_board.upload_single_info({'sst_ul': self.sst_ul})
 
         return logs
+
+    def _cal_hd95(self, predict, target):
+        zero_count_p = np.count_nonzero(predict)
+        zero_count_t = np.count_nonzero(target)
+        if 0 != zero_count_p and 0 != zero_count_t:
+            return hd95(predict, target)
+        if 0 == zero_count_p and 0 == zero_count_t:
+            return 0.
+        return 50.
