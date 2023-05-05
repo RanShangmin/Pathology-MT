@@ -78,6 +78,8 @@ def dice_loss(predict, target, num_classes=2):
     target = trans_target(target, num_classes=num_classes)
     criterion = monai.losses.DiceCELoss(sigmoid=True, lambda_ce=1.0, lambda_dice=1.0)
 
+    # criterion = monai.losses.DiceLoss(sigmoid=True)
+
     # unique, count = np.unique(predict.detach().max(1)[1].cpu().numpy(), return_counts=True)
     # data_count = dict(zip(unique, count))
     # print("predict: ",data_count)

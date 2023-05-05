@@ -185,10 +185,10 @@ class BaseDataSet(Dataset):
             raise ValueError
 
     def _data_aug(self, image, flag="weak"):
-        add_noise = RandGaussianNoise(std=0.02)
-        weak_aug = add_noise(image)
+        add_noise = RandGaussianNoise(std=0.05)
+        weak_aug = add_noise(image.clone())
         for _ in range(self.weak_times - 1):
-            weak_aug = np.stack((weak_aug, add_noise(image)))
+            weak_aug = np.stack((weak_aug, add_noise(image.clone())))
 
         if flag == "weak":
             return weak_aug
@@ -197,37 +197,37 @@ class BaseDataSet(Dataset):
             # kernel_size = int(random.random() * 4.95)
             # kernel_size = kernel_size + 1 if kernel_size % 2 == 0 else kernel_size
             # blurring_image = transforms.GaussianBlur(kernel_size, sigma=(0.1, 2.0))
-            shift_intensity = RandStdShiftIntensity(0.1)
-            scale_intensity = RandScaleIntensity(0.1)
+            # shift_intensity = RandStdShiftIntensity(0.03)
+            scale_intensity = RandScaleIntensity(0.5)
             shift_histogram = RandHistogramShift()
             smooth_image = RandGaussianSmooth()
             blurring_image = RandGaussianSharpen()
             color_jitter = RandAdjustContrast()
             add_noise = RandGaussianNoise()
 
-            strong_aug = image
+            strong_aug = image.clone()
+            #
+            # if random.random() < 0.1:
+            #     strong_aug = shift_intensity(strong_aug)
 
-            if random.random() < 0.1:
-                strong_aug = shift_intensity(strong_aug)
-
-            if random.random() < 0.1:
+            if random.random() < 0.2:
                 strong_aug = scale_intensity(strong_aug)
 
-            if random.random() < 0.1:
+            if random.random() < 0.2:
                 strong_aug = shift_histogram(strong_aug)
 
-            if random.random() < 0.1:
+            if random.random() < 0.2:
                 strong_aug = color_jitter(strong_aug)
 
-            if random.random() < 0.1:
+            if random.random() < 0.2:
+                strong_aug = add_noise(strong_aug)
+
+            if random.random() < 0.2:
                 strong_aug = smooth_image(strong_aug)
 
-            if random.random() < 0.1:
+            if random.random() < 0.2:
                 # strong_aug = blurring_image(strong_aug)
                 strong_aug = blurring_image(strong_aug)
-
-            if random.random() < 0.1:
-                strong_aug = add_noise(strong_aug)
 
             return weak_aug, strong_aug
 

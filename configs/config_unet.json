@@ -26,8 +26,8 @@
   "optimizer": {
     "type": "Adam",
     "args": {
-      "lr": 1.5e-3,
-      "weight_decay": 1.5e-5
+      "lr": 4e-3,
+      "weight_decay": 4e-5
     }
   },
   "train_supervised": {
