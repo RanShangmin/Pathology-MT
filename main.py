@@ -47,6 +47,9 @@ def main(gpu, ngpus_per_node, config, args):
             "Current unsupervised loss function: {}, with weight {} and length {}".format(config['model']['un_loss'],
                                                                                           config['unsupervised_w'],
                                                                                           config['ramp_up']))
+
+        logger.info("Use pre-trained model or no: {}".format("Yes" if config['state_dir'] is not None else "No"))
+
         logger.info("Current config+args: \n{}".format({**config, **vars(args)}))
     if args.ddp:
         dist.init_process_group(
@@ -119,8 +122,7 @@ def main(gpu, ngpus_per_node, config, args):
     else:
         raise NotImplementedError
 
-    model = Model(in_channel=config['in_channel'],
-                  num_classes=config['num_classes'],
+    model = Model(in_channel=config['in_channel'], num_classes=config['num_classes'], state_dir=config['state_dir'],
                   sup_loss=sup_loss, cons_w_unsup=cons_w_unsup, unsup_loss=unsup_loss, f_loss=f_loss, cons_w_f=cons_w_f,
                   w_vat=w_vat)
 
@@ -184,6 +186,9 @@ if __name__ == '__main__':
     parser.add_argument('--semi_n_th', type=float, default=0.6,
                         help='negative_threshold for semi-supervised loss')
 
+    parser.add_argument("-s", "--state_dir", default=None, type=str,
+                        help="use pre-trained model to initialise entire model")
+
     args = parser.parse_args()
     args.world_size = args.gpus * args.nodes
     if args.architecture == "unet":
@@ -205,6 +210,7 @@ if __name__ == '__main__':
     config['model']['warm_up_epoch'] = args.warm_up
     config['n_labeled_examples'] = args.labeled_examples
     config['weak_times'] = args.weak_times
+    config['state_dir'] = args.state_dir
 
     args.ddp = True if args.gpus > 1 else False
 

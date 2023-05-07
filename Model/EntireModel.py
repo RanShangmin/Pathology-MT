@@ -1,3 +1,5 @@
+import os.path
+
 from Utils.losses import *
 from itertools import chain
 from Base.base_model import BaseModel
@@ -5,8 +7,8 @@ from Model.encoder_decoder import *
 
 
 class EntireModel(BaseModel):
-    def __init__(self, in_channel, num_classes, sup_loss=None, cons_w_unsup=None, unsup_loss=None, f_loss=None,
-                 cons_w_f=None, w_vat=None):
+    def __init__(self, in_channel, num_classes, state_dir=None, sup_loss=None, cons_w_unsup=None, unsup_loss=None,
+                 f_loss=None, cons_w_f=None, w_vat=None):
         super(EntireModel, self).__init__()
         self.encoder_t = EncoderNetwork(in_channel)
         self.decoder_t = TDecoderNetwork(num_classes)
@@ -20,6 +22,15 @@ class EntireModel(BaseModel):
         self.f_loss = f_loss
         self.vat_w = w_vat
         self.num_classes = num_classes
+        if state_dir is not None:
+            self.load_trained(state_dir)
+
+    def load_trained(self, state_dir):
+        if not os.path.exists(state_dir):
+            raise FileNotFoundError
+        state = torch.load(state_dir)
+        state['state_dict'] = {key[7:]: state['state_dict'][key] for key in state['state_dict']}
+        self.load_state_dict(state['state_dict'])
 
     def freeze_teachers_parameters(self):
         for p in self.encoder_t.parameters():

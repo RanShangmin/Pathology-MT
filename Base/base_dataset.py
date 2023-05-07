@@ -252,7 +252,7 @@ class BaseDataSet(Dataset):
         return image_wk, image_str, label
 
     def _reflect_index(self, label):
-        if (self.reflect_index is None):
+        if self.reflect_index is None:
             return label
         for index in range(len(self.reflect_index)):
             label[label == self.reflect_index[index]] = index
