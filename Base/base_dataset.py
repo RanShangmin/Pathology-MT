@@ -9,15 +9,15 @@ from torchvision.transforms.functional import rotate
 from torchvision.transforms import InterpolationMode
 from skimage import transform
 from monai.transforms.intensity.array import RandScaleIntensity, RandStdShiftIntensity, RandGaussianSmooth, \
-    RandGaussianSharpen, RandAdjustContrast, RandHistogramShift, RandGaussianNoise, ScaleIntensity
-from Utils.param_trans import trans_data
+    RandGaussianSharpen, RandAdjustContrast, RandHistogramShift, RandGaussianNoise, NormalizeIntensity
+from Utils.param_trans import trans_data, trans_label
 
 
 # Ensure your dataset only contains 3d gray images!
 class BaseDataSet(Dataset):
     def __init__(self, data_dir, split, weak_times=1, base_size=None, reflect_index=None, augment=True, val=False,
                  use_weak_lables=False, weak_labels_output=None, crop_size=None, scale=False,
-                 rotate=False, n_labeled_examples=None):
+                 flip=False, rotate=False, n_labeled_examples=None):
 
         self.root = data_dir
         self.split = split
@@ -33,6 +33,7 @@ class BaseDataSet(Dataset):
 
         if self.augment:
             self.scale = scale
+            self.flip = flip
             self.rotate = rotate
 
         self.files = []
@@ -77,10 +78,20 @@ class BaseDataSet(Dataset):
 
     def _rotate90(self, image, label):
         # Rotate the image with an angle between -90 and 90
-        angle = random.randint(-2, 1)
+        angle = random.randint(-1, 2)
         axis = random.randint(0, 2)
         image = self._rotation_3d(image, axis, angle * 90, fill=.0, interpolation=InterpolationMode.BILINEAR)
         label = self._rotation_3d(label, axis, angle * 90, fill=0, interpolation=InterpolationMode.NEAREST)
+        return image, label
+
+    def _flip(self, image, label):
+        axis = random.randint(0, 2)
+        if random.random() > 0.5:
+            # image = torch.flip(image, dims=[axis]).clone()
+            # label = torch.flip(label, dims=[axis]).clone()
+            # print(image.dtype, label.dtype)
+            image = np.flip(image, axis=axis).copy()
+            label = np.flip(label, axis=axis).copy()
         return image, label
 
     def _crop(self, image, label):
@@ -139,8 +150,8 @@ class BaseDataSet(Dataset):
         # return image, label
         if isinstance(self.base_size, int):
             d, h, w = image.shape
-            if self.scale:
-                longside = random.randint(int(self.base_size), int(self.base_size * 1.5))
+            if self.augment and self.scale:
+                longside = random.randint(int(self.base_size * 0.8), int(self.base_size * 1.2))
                 # longside = random.randint(int(self.base_size*0.5), int(self.base_size*1))
             else:
                 longside = self.base_size
@@ -170,8 +181,8 @@ class BaseDataSet(Dataset):
             return image, label
 
         elif (isinstance(self.base_size, list) or isinstance(self.base_size, tuple)) and len(self.base_size) == 3:
-            if self.scale:
-                scale = random.random() * 0.5 + 1  # Scaling between [1, 1.5]
+            if self.augment and self.scale:
+                scale = random.random() * 0.4 + 0.8  # Scaling between [1, 1.5]
                 d, h, w = int(self.base_size[0] * scale), int(self.base_size[1] * scale), int(self.base_size[2] * scale)
             else:
                 d, h, w = self.base_size
@@ -184,11 +195,22 @@ class BaseDataSet(Dataset):
         else:
             raise ValueError
 
+    def _repeat_weak(self, image):
+        # # image = trans_data(image)
+        # repeat_image = np.repeat(image, self.weak_times, axis=0)
+        repeat_image = image.repeat(self.weak_times, 1, 1, 1)
+
+        return repeat_image
+
+    def _add_noise(self, image):
+        add_noise = RandGaussianNoise(std=(torch.std(image).item() / 1))
+        return add_noise(image)
+
     def _data_aug(self, image, flag="weak"):
-        add_noise = RandGaussianNoise(std=0.05)
-        weak_aug = add_noise(image.clone())
-        for _ in range(self.weak_times - 1):
-            weak_aug = np.stack((weak_aug, add_noise(image.clone())))
+        # print(image.dtype)
+        weak_aug = self._repeat_weak(image)
+        for i, img in enumerate(weak_aug):
+            weak_aug[i] = self._add_noise(img)
 
         if flag == "weak":
             return weak_aug
@@ -203,12 +225,14 @@ class BaseDataSet(Dataset):
             smooth_image = RandGaussianSmooth()
             blurring_image = RandGaussianSharpen()
             color_jitter = RandAdjustContrast()
-            add_noise = RandGaussianNoise()
 
             strong_aug = image.clone()
             #
             # if random.random() < 0.1:
             #     strong_aug = shift_intensity(strong_aug)
+
+            if random.random() < 0.2:
+                strong_aug = self._add_noise(strong_aug)
 
             if random.random() < 0.2:
                 strong_aug = scale_intensity(strong_aug)
@@ -218,9 +242,6 @@ class BaseDataSet(Dataset):
 
             if random.random() < 0.2:
                 strong_aug = color_jitter(strong_aug)
-
-            if random.random() < 0.2:
-                strong_aug = add_noise(strong_aug)
 
             if random.random() < 0.2:
                 strong_aug = smooth_image(strong_aug)
@@ -234,15 +255,23 @@ class BaseDataSet(Dataset):
         else:
             raise NotImplementedError
 
-    def _scale_intensity(self, image):
-        si = ScaleIntensity()
-        image = si(image)
+    def _normalize_intensity(self, image):
+        if self.val or not self.augment or random.random() < 0.5:
+            ni = NormalizeIntensity()
+        else:
+            ni = NormalizeIntensity(channel_wise=True)
+        image = ni(image)
+        # image /= 32.
+        # print("mean:{},std:{}".format(np.mean(image), np.std(image)))
         return image
 
     def _augmentation(self, image, label):
 
         # image = Image.fromarray(np.float32(image))
         # image = self.jitter_tf(image) if self.jitter else image
+
+        if self.flip:
+            image, label = self._flip(image, label)
 
         if self.rotate:
             image, label = self._rotate90(image, label)
@@ -265,6 +294,8 @@ class BaseDataSet(Dataset):
     def __getitem__(self, index):
         image, label, image_id = self._load_data(index)
 
+        # print("image_id:{},mean:{},std:{}".format(image_id, np.mean(image), np.std(image)))
+
         if self.base_size is not None:
             image, label = self._resize(image, label)
 
@@ -273,18 +304,19 @@ class BaseDataSet(Dataset):
         elif not self.val:
             raise ValueError
 
-        image = self._scale_intensity(image)
+        image = self._normalize_intensity(image)
         label = self._reflect_index(label)
 
-        label = torch.from_numpy(np.array(label, dtype=np.int32)).long()
+        label = np.array(label, dtype=np.int64)
+        # label = torch.from_numpy(label).long()
 
         if self.val:
-            return trans_data(image), label
+            return trans_data(image), trans_label(label)
         elif self.augment:
             image_wk, image_str, label = self._augmentation(image, label)
-            return trans_data(image_wk), trans_data(image_str), label
+            return trans_data(image_wk), trans_data(image_str), trans_label(label)
         else:
-            return trans_data(image), trans_data(image), label
+            return trans_data(self._repeat_weak(image)), trans_data(image), trans_label(label)
 
     def __repr__(self):
         fmt_str = "Dataset: " + self.__class__.__name__ + "\n"

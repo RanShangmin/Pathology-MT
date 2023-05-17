@@ -32,7 +32,7 @@ class Trainer(BaseTrainer):
         self.mode = self.model.module.mode
         self.evaluator = SlidingEval(model=self.model,
                                      crop_size=config['train_unsupervised']['crop_size'],
-                                     stride_rate=2 / 3,
+                                     stride_rate=1,
                                      device="cuda:0" if self.args.local_rank < 0 else
                                      "cuda:{}".format(self.args.local_rank),
                                      class_number=self.num_classes)
@@ -118,8 +118,8 @@ class Trainer(BaseTrainer):
             input_l, target_l = input_l.cuda(non_blocking=True), target_l.cuda(non_blocking=True)
 
             total_loss, cur_losses, outputs = self.model(x_l=input_l, target_l=target_l, x_ul=None,
-                                                         target_ul=None,
-                                                         curr_iter=batch_idx, epoch=epoch - 1, id=id, warm_up=True)
+                                                         target_ul=None, curr_iter=batch_idx, epoch=epoch - 1, id=id,
+                                                         warm_up=True)
             if id == 1:
                 self.optimizer_t.zero_grad()
             else:
@@ -400,6 +400,4 @@ class Trainer(BaseTrainer):
         zero_count_t = np.count_nonzero(target)
         if 0 != zero_count_p and 0 != zero_count_t:
             return hd95(predict, target)
-        if 0 == zero_count_p and 0 == zero_count_t:
-            return 0.
-        return 50.
+        return 0.

@@ -1,9 +1,57 @@
 import torch
 import torch.nn as nn
-from functools import partial
 import torch.nn.functional as F
 
-feat_channels = [32, 64, 128, 256, 512]
+from Utils.network_helpers import init_weights
+
+feat_channels = [16, 32, 64, 128, 256]
+
+
+class UnetConv3(nn.Module):
+    def __init__(self, in_size, out_size, is_batchnorm, kernel_size=(3, 3, 3), padding_size=(1, 1, 1),
+                 init_stride=(1, 1, 1)):
+        super(UnetConv3, self).__init__()
+
+        if is_batchnorm:
+            self.conv1 = nn.Sequential(nn.Conv3d(in_size, out_size, kernel_size, init_stride, padding_size),
+                                       nn.InstanceNorm3d(out_size),
+                                       nn.ReLU(inplace=True), )
+            self.conv2 = nn.Sequential(nn.Conv3d(out_size, out_size, kernel_size, 1, padding_size),
+                                       nn.InstanceNorm3d(out_size),
+                                       nn.ReLU(inplace=True), )
+        else:
+            self.conv1 = nn.Sequential(nn.Conv3d(in_size, out_size, kernel_size, init_stride, padding_size),
+                                       nn.ReLU(inplace=True), )
+            self.conv2 = nn.Sequential(nn.Conv3d(out_size, out_size, kernel_size, 1, padding_size),
+                                       nn.ReLU(inplace=True), )
+
+        # initialise the blocks
+        for m in self.children():
+            init_weights(m, init_type='kaiming')
+
+    def forward(self, inputs):
+        outputs = self.conv1(inputs)
+        outputs = self.conv2(outputs)
+        return outputs
+
+
+class UnetUp3_CT(nn.Module):
+    def __init__(self, in_size, out_size, is_batchnorm=True):
+        super(UnetUp3_CT, self).__init__()
+        self.conv = UnetConv3(in_size + out_size, out_size, is_batchnorm, kernel_size=(3, 3, 3), padding_size=(1, 1, 1))
+        self.up = nn.Upsample(scale_factor=(2, 2, 2), mode='trilinear')
+
+        # initialise the blocks
+        for m in self.children():
+            if m.__class__.__name__.find('UnetConv3') != -1: continue
+            init_weights(m, init_type='kaiming')
+
+    def forward(self, inputs1, inputs2):
+        outputs2 = self.up(inputs2)
+        offset = outputs2.size()[2] - inputs1.size()[2]
+        padding = 2 * [offset // 2, offset // 2, 0]
+        outputs1 = F.pad(inputs1, padding)
+        return self.conv(torch.cat([outputs1, outputs2], 1))
 
 
 class Conv3D_Block(nn.Module):
@@ -56,31 +104,49 @@ class Deconv3D_Block(nn.Module):
 
 
 class EncoderNetwork(nn.Module):
-    def __init__(self, in_channel, residual=True):
+    def __init__(self, in_channel, is_batchnorm=True):
         super(EncoderNetwork, self).__init__()
-        # Encoder downsamplers
-        self.pool1 = nn.MaxPool3d((2, 2, 2))
-        self.pool2 = nn.MaxPool3d((2, 2, 2))
-        self.pool3 = nn.MaxPool3d((2, 2, 2))
-        self.pool4 = nn.MaxPool3d((2, 2, 2))
 
-        # Encoder convolutions
-        self.conv_blk1 = Conv3D_Block(in_channel, feat_channels[0], residual=residual)
-        self.conv_blk2 = Conv3D_Block(feat_channels[0], feat_channels[1], residual=residual)
-        self.conv_blk3 = Conv3D_Block(feat_channels[1], feat_channels[2], residual=residual)
-        self.conv_blk4 = Conv3D_Block(feat_channels[2], feat_channels[3], residual=residual)
-        self.conv_blk5 = Conv3D_Block(feat_channels[3], feat_channels[4], residual=residual)
+        # downsampling
+        self.conv1 = UnetConv3(in_channel, feat_channels[0], is_batchnorm, kernel_size=(
+            3, 3, 3), padding_size=(1, 1, 1))
+        self.maxpool1 = nn.MaxPool3d(kernel_size=(2, 2, 2))
+
+        self.conv2 = UnetConv3(feat_channels[0], feat_channels[1], is_batchnorm, kernel_size=(
+            3, 3, 3), padding_size=(1, 1, 1))
+        self.maxpool2 = nn.MaxPool3d(kernel_size=(2, 2, 2))
+
+        self.conv3 = UnetConv3(feat_channels[1], feat_channels[2], is_batchnorm, kernel_size=(
+            3, 3, 3), padding_size=(1, 1, 1))
+        self.maxpool3 = nn.MaxPool3d(kernel_size=(2, 2, 2))
+
+        self.conv4 = UnetConv3(feat_channels[2], feat_channels[3], is_batchnorm, kernel_size=(
+            3, 3, 3), padding_size=(1, 1, 1))
+        self.maxpool4 = nn.MaxPool3d(kernel_size=(2, 2, 2))
+
+        self.center = UnetConv3(feat_channels[3], feat_channels[4], is_batchnorm, kernel_size=(
+            3, 3, 3), padding_size=(1, 1, 1))
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv3d):
+                init_weights(m, init_type='kaiming')
+            elif isinstance(m, nn.BatchNorm3d):
+                init_weights(m, init_type='kaiming')
 
     def forward(self, data):
-        f1 = self.conv_blk1(data)
-        f_low1 = self.pool1(f1)
-        f2 = self.conv_blk2(f_low1)
-        f_low2 = self.pool2(f2)
-        f3 = self.conv_blk3(f_low2)
-        f_low3 = self.pool3(f3)
-        f4 = self.conv_blk4(f_low3)
-        f_low4 = self.pool4(f4)
-        f5 = self.conv_blk5(f_low4)
+        f1 = self.conv1(data)
+        maxpool1 = self.maxpool1(f1)
+
+        f2 = self.conv2(maxpool1)
+        maxpool2 = self.maxpool2(f2)
+
+        f3 = self.conv3(maxpool2)
+        maxpool3 = self.maxpool3(f3)
+
+        f4 = self.conv4(maxpool3)
+        maxpool4 = self.maxpool4(f4)
+
+        f5 = self.center(maxpool4)
 
         return f1, f2, f3, f4, f5
 
@@ -159,34 +225,38 @@ def get_r_adv_t_mul(f1, f2, f3, f4, f5, decoder, it=1, xi=1e-1, eps=10.0):
 
 
 class DecoderNetwork(nn.Module):
-    def __init__(self, num_classes, residual=True):
+    def __init__(self, num_classes, is_batchnorm=True):
         super(DecoderNetwork, self).__init__()
-        # Decoder convolutions
-        self.dec_conv_blk4 = Conv3D_Block(2 * feat_channels[3], feat_channels[3], residual=residual)
-        self.dec_conv_blk3 = Conv3D_Block(2 * feat_channels[2], feat_channels[2], residual=residual)
-        self.dec_conv_blk2 = Conv3D_Block(2 * feat_channels[1], feat_channels[1], residual=residual)
-        self.dec_conv_blk1 = Conv3D_Block(2 * feat_channels[0], feat_channels[0], residual=residual)
 
-        # Decoder upsamplers
-        self.deconv_blk4 = Deconv3D_Block(feat_channels[4], feat_channels[3])
-        self.deconv_blk3 = Deconv3D_Block(feat_channels[3], feat_channels[2])
-        self.deconv_blk2 = Deconv3D_Block(feat_channels[2], feat_channels[1])
-        self.deconv_blk1 = Deconv3D_Block(feat_channels[1], feat_channels[0])
+        # upsampling
+        self.up_concat4 = UnetUp3_CT(feat_channels[4], feat_channels[3], is_batchnorm)
+        self.up_concat3 = UnetUp3_CT(feat_channels[3], feat_channels[2], is_batchnorm)
+        self.up_concat2 = UnetUp3_CT(feat_channels[2], feat_channels[1], is_batchnorm)
+        self.up_concat1 = UnetUp3_CT(feat_channels[1], feat_channels[0], is_batchnorm)
 
-        # Final 1*1 Conv Segmentation map
-        self.one_conv = nn.Conv3d(feat_channels[0], num_classes, kernel_size=1, stride=1, padding=0, bias=True)
+        # final conv (without any concat)
+        self.final = nn.Conv3d(feat_channels[0], num_classes, 1)
+
+        self.dropout1 = nn.Dropout(p=0.3)
+        self.dropout2 = nn.Dropout(p=0.3)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv3d):
+                init_weights(m, init_type='kaiming')
+            elif isinstance(m, nn.BatchNorm3d):
+                init_weights(m, init_type='kaiming')
 
     def forward(self, f1, f2, f3, f4, f5):
-        # 解码器
-        d4 = torch.cat([self.deconv_blk4(f5), f4], dim=1)
-        d_high4 = self.dec_conv_blk4(d4)
-        d3 = torch.cat([self.deconv_blk3(d_high4), f3], dim=1)
-        d_high3 = self.dec_conv_blk3(d3)
-        d2 = torch.cat([self.deconv_blk2(d_high3), f2], dim=1)
-        d_high2 = self.dec_conv_blk2(d2)
-        d1 = torch.cat([self.deconv_blk1(d_high2), f1], dim=1)
-        d_high1 = self.dec_conv_blk1(d1)
-        pred = self.one_conv(d_high1)
+
+        center = self.dropout1(f5)
+        up4 = self.up_concat4(f4, center)
+        up3 = self.up_concat3(f3, up4)
+        up2 = self.up_concat2(f2, up3)
+        up1 = self.up_concat1(f1, up2)
+        up1 = self.dropout2(up1)
+
+        pred = self.final(up1)
+
         return pred
 
 

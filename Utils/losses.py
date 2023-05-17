@@ -5,6 +5,7 @@ import torch.nn as nn
 import monai
 from Utils import ramps
 from Utils.param_trans import trans_target
+from torch.nn.modules.loss import CrossEntropyLoss
 
 
 class ProbOhemCrossEntropy2d(nn.Module):
@@ -70,13 +71,52 @@ class consistency_weight(object):
         return self.final_w * self.current_rampup
 
 
+class DiceLoss(nn.Module):
+    def __init__(self, n_classes):
+        super(DiceLoss, self).__init__()
+        self.n_classes = n_classes
+
+    def _one_hot_encoder(self, input_tensor):
+        tensor_list = []
+        for i in range(self.n_classes):
+            temp_prob = input_tensor == i * torch.ones_like(input_tensor)
+            tensor_list.append(temp_prob)
+        output_tensor = torch.cat(tensor_list, dim=1)
+        return output_tensor.float()
+
+    def _dice_loss(self, score, target):
+        target = target.float()
+        smooth = 1e-5
+        intersect = torch.sum(score * target)
+        y_sum = torch.sum(target * target)
+        z_sum = torch.sum(score * score)
+        loss = (2 * intersect + smooth) / (z_sum + y_sum + smooth)
+        loss = 1 - loss
+        return loss
+
+    def forward(self, inputs, target, weight=None, softmax=False):
+        if softmax:
+            inputs = torch.softmax(inputs, dim=1)
+        target = self._one_hot_encoder(target)
+        if weight is None:
+            weight = [1] * self.n_classes
+        assert inputs.size() == target.size(), 'predict & target shape do not match'
+        class_wise_dice = []
+        loss = 0.0
+        for i in range(0, self.n_classes):
+            dice = self._dice_loss(inputs[:, i], target[:, i])
+            class_wise_dice.append(1.0 - dice.item())
+            loss += dice * weight[i]
+        return loss / self.n_classes
+
+
 def dice_loss(predict, target, num_classes=2):
     # unique, count = np.unique(target.cpu().numpy(), return_counts=True)
     # data_count = dict(zip(unique, count))
     # print("target: ",data_count)
 
     target = trans_target(target, num_classes=num_classes)
-    criterion = monai.losses.DiceCELoss(sigmoid=True, lambda_ce=1.0, lambda_dice=1.0)
+    criterion = monai.losses.DiceCELoss(softmax=True, squared_pred=True, lambda_ce=1.0, lambda_dice=1.0)
 
     # criterion = monai.losses.DiceLoss(sigmoid=True)
 
@@ -89,6 +129,15 @@ def dice_loss(predict, target, num_classes=2):
     # print("target: ",data_count)
 
     return criterion(predict, target)
+
+
+def dice_ce_loss(predict, target, num_classes=2, lambda_ce=1.0, lambda_dice=1.0):
+    ce_loss = CrossEntropyLoss()
+    loss_ce = ce_loss(predict, target)
+    # target = trans_target(target, num_classes=num_classes)
+    dice_loss = DiceLoss(num_classes)
+    loss_dice = dice_loss(predict, target.unsqueeze(1), softmax=True)
+    return lambda_ce * loss_ce + lambda_dice * loss_dice
 
 
 def semi_dice_loss(inputs, targets,
@@ -143,7 +192,7 @@ def semi_dice_loss(inputs, targets,
             return inputs.sum() * .0, pass_rate, negative_loss_mat[mask_neg].mean()
         else:
             targets = trans_target(torch.argmax(F.softmax(targets, dim=1), dim=1), num_classes=num_classes)
-            loss_dice = monai.losses.DiceLoss(sigmoid=True, reduction="none")
+            loss_dice = monai.losses.DiceLoss(softmax=True, squared_pred=True, reduction="none")
             positive_loss_mat = loss_dice(inputs, targets).sum(dim=1) + F.cross_entropy(inputs,
                                                                                         torch.argmax(targets, dim=1),
                                                                                         reduction="none")

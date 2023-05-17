@@ -6,7 +6,7 @@
   "num_classes": 2,
   "ramp_up": 100,
   "unsupervised_w": 1.0,
-  "feature_w": 1.0,
+  "feature_w": 0.5,
   "vat_w": 1.0,
   "weak_times": 2,
   "reflect_index": [
@@ -24,10 +24,11 @@
     "warm_up_epoch": 0
   },
   "optimizer": {
-    "type": "Adam",
+    "type": "SGD",
     "args": {
-      "lr": 2e-3,
-      "weight_decay": 2e-5
+      "lr": 8e-3,
+      "weight_decay": 1e-4,
+      "momentum": 0.9
     }
   },
   "train_supervised": {
@@ -42,6 +43,7 @@
     ],
     "augment": true,
     "scale": true,
+    "flip": true,
     "rotate": true,
     "split": "train_supervised",
     "num_workers": 8
@@ -59,6 +61,7 @@
     ],
     "augment": true,
     "scale": true,
+    "flip": true,
     "rotate": true,
     "split": "train_unsupervised",
     "num_workers": 8

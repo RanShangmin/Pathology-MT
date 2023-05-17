@@ -125,11 +125,14 @@ class SlidingEval(torch.nn.Module):
                         with torch.no_grad():
                             f1, f2, f3, f4, f5 = self.model.module.encoder_t(input_data)
                             temp_score = self.model.module.decoder_t(f1, f2, f3, f4, f5)
-                        temp_score = temp_score[:, :,
-                                     tmargin[0]:(temp_score.shape[2] - tmargin[1]),
-                                     tmargin[2]:(temp_score.shape[3] - tmargin[3]),
-                                     tmargin[4]:(temp_score.shape[4] - tmargin[5])]
-                        data_scale[:, :, s_z:e_z, s_x:e_x, s_y:e_y] += temp_score
+                        # temp_score = temp_score[:, :,
+                        #              tmargin[0]:(temp_score.shape[2] - tmargin[1]),
+                        #              tmargin[2]:(temp_score.shape[3] - tmargin[3]),
+                        #              tmargin[4]:(temp_score.shape[4] - tmargin[5])]
+                        data_scale[:, :, s_z:e_z, s_x:e_x, s_y:e_y] += temp_score[:, :,
+                                                                       tmargin[0]:(temp_score.shape[2] - tmargin[1]),
+                                                                       tmargin[2]:(temp_score.shape[3] - tmargin[3]),
+                                                                       tmargin[4]:(temp_score.shape[4] - tmargin[5])]
 
             # assert count_scale.min() > 0
             score = data_scale / count_scale

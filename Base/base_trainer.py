@@ -9,9 +9,6 @@ from itertools import chain
 from Utils.helpers import group_weight
 
 
-# from dgx.download_to_pvc import *
-
-
 # from utils.htmlwriter import HTML
 
 

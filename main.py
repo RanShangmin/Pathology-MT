@@ -17,16 +17,12 @@ from Utils.logger import *
 warnings.filterwarnings("ignore")
 
 
-# from dgx.download_to_pvc import *
-
-
 def main(gpu, ngpus_per_node, config, args):
     args.local_rank = gpu
     if args.local_rank <= 0:
         logger = logging.getLogger("DW-MT")
         logger.propagate = False
         logger.warning("Training start, total {} epochs".format(str(config['trainer']['epochs'])))
-        logger.critical("DGX: {} with [{} x gpu]".format("On" if args.dgx else "Off", str(args.gpus)))
         logger.critical("GPU: {}".format(args.gpus))
         logger.critical("Network Architecture: {}".format(args.architecture))
         logger.critical("Current Labeled Example: {}".format(config['n_labeled_examples']))
@@ -77,16 +73,17 @@ def main(gpu, ngpus_per_node, config, args):
     config['val_loader']['reflect_index'] = config['reflect_index']
     config['val_loader']['num_classes'] = config['num_classes']
 
-    supervised_loader = Pathology(config['train_supervised'], ddp_training=args.ddp, dgx=args.dgx)
-    unsupervised_loader = Pathology(config['train_unsupervised'], ddp_training=args.ddp, dgx=args.dgx)
+    supervised_loader = Pathology(config['train_supervised'], ddp_training=args.ddp)
+    unsupervised_loader = Pathology(config['train_unsupervised'], ddp_training=args.ddp)
 
-    val_loader = Pathology(config['val_loader'], dgx=args.dgx)
+    val_loader = Pathology(config['val_loader'])
 
     iter_per_epoch = len(unsupervised_loader)
 
     # SUPERVISED LOSS
     if config['model']['sup_loss'] == 'dice':
         sup_loss = dice_loss
+        # sup_loss = dice_ce_loss
     else:
         raise NotImplementedError
 
@@ -176,10 +173,6 @@ if __name__ == '__main__':
                         help="distributed data parallel training or not;"
                              "MUST SPECIFIED")
 
-    parser.add_argument("--dgx", action="store_true",
-                        help="use dgx == [4*v100] to train the machine; combo with pvc"
-                             "the only difference is the batch v.s. lr")
-
     parser.add_argument('--semi_p_th', type=float, default=0.6,
                         help='positive_threshold for semi-supervised loss')
 
@@ -203,7 +196,7 @@ if __name__ == '__main__':
     else:
         config['trainer']['epochs'] = args.epochs
 
-    config['ramp_up'] = math.ceil(config['trainer']['epochs'] * 3 / 4)
+    config['ramp_up'] = math.ceil(config['trainer']['epochs'] * 1 / 2)
 
     config['train_supervised']['batch_size'] = args.batch_size
     config['train_unsupervised']['batch_size'] = args.batch_size

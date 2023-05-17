@@ -10,10 +10,9 @@ from torch.utils.data import Dataset
 
 
 class PathologyDataset(BaseDataSet):
-    def __init__(self, ddp_training, dgx, **kwargs):
+    def __init__(self, ddp_training, **kwargs):
         self.num_classes = kwargs.pop('num_classes')
         self.ddp_training = ddp_training
-        self.dgx = dgx
         # self.palette = get_voc_pallete(self.num_classes)
         super(PathologyDataset, self).__init__(**kwargs)
 
@@ -41,19 +40,19 @@ class PathologyDataset(BaseDataSet):
         else:
             label_path = os.path.join(self.root, self.labels[index][1:])
         # label = np.asarray(Image.open(label_path), dtype=np.int32)
-        label = np.asarray(tiff.imread(label_path), dtype=np.int32)
+        label = np.asarray(tiff.imread(label_path), dtype=np.int64)
         return image, label, image_id
 
 
 class Pathology(BaseDataLoader):
-    def __init__(self, kwargs, ddp_training=False, dgx=False):
+    def __init__(self, kwargs, ddp_training=False):
         self.batch_size = kwargs.pop('batch_size')
         try:
             shuffle = kwargs.pop('shuffle')
         except:
             shuffle = False
         num_workers = kwargs.pop('num_workers')
-        self.dataset = PathologyDataset(ddp_training, **kwargs, dgx=dgx)
+        self.dataset = PathologyDataset(ddp_training, **kwargs)
         if ddp_training:
             train_sampler = torch.utils.data.distributed.DistributedSampler(self.dataset)
         else:
