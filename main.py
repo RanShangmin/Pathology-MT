@@ -82,8 +82,8 @@ def main(gpu, ngpus_per_node, config, args):
 
     # SUPERVISED LOSS
     if config['model']['sup_loss'] == 'dice':
-        sup_loss = dice_loss
-        # sup_loss = dice_ce_loss
+        # sup_loss = dice_loss
+        sup_loss = dice_ce_loss
     else:
         raise NotImplementedError
 

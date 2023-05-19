@@ -204,6 +204,7 @@ class BaseDataSet(Dataset):
 
     def _add_noise(self, image):
         add_noise = RandGaussianNoise(std=(torch.std(image).item() / 1))
+        # add_noise = RandGaussianNoise(std=0.)
         return add_noise(image)
 
     def _data_aug(self, image, flag="weak"):
@@ -256,12 +257,12 @@ class BaseDataSet(Dataset):
             raise NotImplementedError
 
     def _normalize_intensity(self, image):
-        if self.val or not self.augment or random.random() < 0.5:
-            ni = NormalizeIntensity()
-        else:
-            ni = NormalizeIntensity(channel_wise=True)
-        image = ni(image)
-        # image /= 32.
+        # if self.val or not self.augment or random.random() < 0.5:
+        #     ni = NormalizeIntensity(subtrahend=np.zeros_like(image))
+        # else:
+        #     ni = NormalizeIntensity(subtrahend=np.zeros_like(image), channel_wise=True)
+        # image = ni(image)
+        image /= 32.
         # print("mean:{},std:{}".format(np.mean(image), np.std(image)))
         return image
 

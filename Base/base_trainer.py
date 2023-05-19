@@ -102,8 +102,7 @@ class BaseTrainer:
             if self.args.ddp:
                 dist.barrier()
 
-            if epoch % self.config['trainer']['val_per_epochs'] == 0 or \
-                    epoch > int(19 / 20 * (self.epochs + 1)):
+            if epoch % self.config['trainer']['val_per_epochs'] == 0:
                 results = self._valid_epoch(max(0, epoch))
                 if self.args.local_rank <= 0:
                     self.logger.info('\n\n')

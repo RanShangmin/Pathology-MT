@@ -6,7 +6,7 @@
   "num_classes": 2,
   "ramp_up": 100,
   "unsupervised_w": 1.0,
-  "feature_w": 0.5,
+  "feature_w": 10.0,
   "vat_w": 1.0,
   "weak_times": 2,
   "reflect_index": [
@@ -26,7 +26,7 @@
   "optimizer": {
     "type": "SGD",
     "args": {
-      "lr": 8e-3,
+      "lr": 1e-2,
       "weight_decay": 1e-4,
       "momentum": 0.9
     }
