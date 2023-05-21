@@ -232,22 +232,22 @@ class BaseDataSet(Dataset):
             # if random.random() < 0.1:
             #     strong_aug = shift_intensity(strong_aug)
 
-            if random.random() < 0.2:
+            if random.random() < 0.5:
                 strong_aug = self._add_noise(strong_aug)
 
-            if random.random() < 0.2:
+            if random.random() < 0.5:
                 strong_aug = scale_intensity(strong_aug)
 
-            if random.random() < 0.2:
+            if random.random() < 0.5:
                 strong_aug = shift_histogram(strong_aug)
 
-            if random.random() < 0.2:
+            if random.random() < 0.5:
                 strong_aug = color_jitter(strong_aug)
 
-            if random.random() < 0.2:
+            if random.random() < 0.5:
                 strong_aug = smooth_image(strong_aug)
 
-            if random.random() < 0.2:
+            if random.random() < 0.5:
                 # strong_aug = blurring_image(strong_aug)
                 strong_aug = blurring_image(strong_aug)
 

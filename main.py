@@ -100,15 +100,15 @@ def main(gpu, ngpus_per_node, config, args):
         raise NotImplementedError
 
     cons_w_unsup = consistency_weight(final_w=config['unsupervised_w'], iters_per_epoch=len(unsupervised_loader),
-                                      rampup_starts=config['ramp_up'] // 2, rampup_ends=config['ramp_up'],
+                                      rampup_starts=0, rampup_ends=config['ramp_up'],
                                       ramp_type="cosine_rampup")
 
     cons_w_f = consistency_weight(final_w=config['feature_w'], iters_per_epoch=len(unsupervised_loader),
-                                  rampup_starts=config['ramp_up'] // 2, rampup_ends=config['ramp_up'],
+                                  rampup_starts=0, rampup_ends=config['ramp_up'],
                                   ramp_type="cosine_rampup")
 
     w_vat = consistency_weight(final_w=config['vat_w'], iters_per_epoch=len(unsupervised_loader),
-                               rampup_starts=config['ramp_up'] // 2, rampup_ends=config['ramp_up'],
+                               rampup_starts=0, rampup_ends=config['ramp_up'],
                                ramp_type="cosine_rampup")
 
     if args.architecture == "unet":
