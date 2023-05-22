@@ -374,6 +374,9 @@ class Trainer(BaseTrainer):
         if "loss_unsup" in cur_losses.keys():
             logs['loss_unsup'] = self.loss_unsup.average
 
+        if "loss_f" in cur_losses.keys():
+            logs['loss_f'] = self.loss_f.average
+
         logs['dc_l'] = self.dc_l
         logs['hd95_l'] = self.hd95_l
         logs['sst_l'] = self.sst_l
@@ -389,6 +392,7 @@ class Trainer(BaseTrainer):
                 logs['hd95_ul'] = self.hd95_ul
                 logs['sst_ul'] = self.sst_ul
                 self.tensor_board.upload_single_info({'loss_unsup': self.loss_unsup.average})
+                self.tensor_board.upload_single_info({'loss_f': self.loss_f.average})
                 self.tensor_board.upload_single_info({'dc_ul': self.dc_ul})
                 self.tensor_board.upload_single_info({'hd95_ul': self.hd95_ul})
                 self.tensor_board.upload_single_info({'sst_ul': self.sst_ul})

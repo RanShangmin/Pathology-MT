@@ -196,7 +196,7 @@ if __name__ == '__main__':
     else:
         config['trainer']['epochs'] = args.epochs
 
-    config['ramp_up'] = math.ceil(config['trainer']['epochs'] * 1 / 2)
+    config['ramp_up'] = math.ceil(config['trainer']['epochs'] * 1 / 5)
 
     config['train_supervised']['batch_size'] = args.batch_size
     config['train_unsupervised']['batch_size'] = args.batch_size

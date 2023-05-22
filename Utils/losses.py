@@ -5,7 +5,7 @@ import torch.nn as nn
 import monai
 from Utils import ramps
 from Utils.param_trans import trans_target
-from torch.nn.modules.loss import CrossEntropyLoss
+from torch.nn.modules.loss import CrossEntropyLoss, MSELoss
 
 
 class ProbOhemCrossEntropy2d(nn.Module):
@@ -191,11 +191,11 @@ def semi_dice_loss(inputs, targets,
             # zero = torch.tensor(0., dtype=torch.float, device=negative_loss_mat.device)
             return inputs.sum() * .0, pass_rate, negative_loss_mat[mask_neg].mean()
         else:
-            targets = trans_target(torch.argmax(F.softmax(targets, dim=1), dim=1), num_classes=num_classes)
-            loss_dice = monai.losses.DiceLoss(softmax=True, squared_pred=True, reduction="none")
-            positive_loss_mat = loss_dice(inputs, targets).sum(dim=1) + F.cross_entropy(inputs,
-                                                                                        torch.argmax(targets, dim=1),
-                                                                                        reduction="none")
+            ce_loss = CrossEntropyLoss(reduction='none')
+            loss_ce = ce_loss(inputs, torch.argmax(targets_real_prob, dim=1))
+            targets = trans_target(torch.argmax(targets_real_prob, dim=1), num_classes=num_classes)
+            dice_loss = monai.losses.DiceLoss(softmax=True, squared_pred=True, reduction="none")
+            positive_loss_mat = dice_loss(inputs, targets).sum(dim=1) + loss_ce
             # positive_loss_mat = F.cross_entropy(inputs, torch.argmax(targets, dim=1), reduction="none")
 
             # print("positive_loss_mat shape: ", positive_loss_mat.shape)
@@ -214,11 +214,11 @@ def softmax_mse_loss(input, target):
     assert input.shape == target.shape
     input_softmax = F.softmax(input, dim=1)
     target_softmax = F.softmax(target, dim=1)
-    loss_fn = nn.MSELoss()
+    loss_fn = MSELoss()
     return loss_fn(input_softmax, target_softmax)
 
 
 def mse_loss(input, target):
     assert input.shape == target.shape
-    loss_fn = nn.MSELoss()
+    loss_fn = MSELoss()
     return loss_fn(input, target)
