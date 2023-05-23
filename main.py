@@ -95,7 +95,7 @@ def main(gpu, ngpus_per_node, config, args):
 
     # FEATURE LOSS
     if config['model']['f_loss'] == 'mse':
-        f_loss = mse_loss
+        f_loss = softmax_mse_loss
     else:
         raise NotImplementedError
 
