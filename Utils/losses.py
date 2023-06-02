@@ -193,11 +193,14 @@ def semi_dice_loss(inputs, targets,
         else:
             # ce_loss = CrossEntropyLoss(reduction='none')
             # loss_ce = ce_loss(inputs, torch.argmax(targets_real_prob, dim=1))
-            mse_loss = MSELoss(reduction='none')
-            loss_mse = mse_loss(inputs, targets)
+            loss_mse = mse_loss(inputs, targets, reduction='none').mean(dim=1)
             targets = trans_target(torch.argmax(targets_real_prob, dim=1), num_classes=num_classes)
-            dice_loss = monai.losses.DiceLoss(softmax=True, squared_pred=True, reduction="none")
-            positive_loss_mat = dice_loss(inputs, targets).mean(dim=1) + loss_mse.mean(dim=1)
+            dice_loss = monai.losses.DiceLoss(softmax=True, squared_pred=False, reduction="none")
+            loss_dice = dice_loss(inputs, targets).mean(dim=1)
+            ce_loss = CrossEntropyLoss(reduction='none')
+            loss_ce = ce_loss(inputs, torch.argmax(targets_real_prob, dim=1))
+            # positive_loss_mat = dice_loss(inputs, targets).mean(dim=1) + loss_mse
+            positive_loss_mat = loss_dice + loss_ce
             # positive_loss_mat = F.cross_entropy(inputs, torch.argmax(targets, dim=1), reduction="none")
 
             # print("positive_loss_mat shape: ", positive_loss_mat.shape)
@@ -212,16 +215,27 @@ def semi_dice_loss(inputs, targets,
         raise NotImplementedError
 
 
-def softmax_mse_loss(input, target):
+def softmax_mse_loss(input, target, reduction='mean'):
     assert input.shape == target.shape
     input_softmax = F.softmax(input, dim=1)
     target_softmax = F.softmax(target, dim=1)
     # loss_fn = MSELoss()
     mse_loss = (input_softmax - target_softmax) ** 2
-    return mse_loss.mean()
+    if reduction == 'none':
+        return mse_loss
+    elif reduction == 'mean':
+        return mse_loss.mean()
+    else:
+        raise NotImplementedError
 
 
-def mse_loss(input, target):
+def mse_loss(input, target, reduction='mean'):
     assert input.shape == target.shape
-    loss_fn = MSELoss()
-    return loss_fn(input, target)
+    # loss_fn = MSELoss()
+    mse_loss = (input - target) ** 2
+    if reduction == 'none':
+        return mse_loss
+    elif reduction == 'mean':
+        return mse_loss.mean()
+    else:
+        raise NotImplementedError

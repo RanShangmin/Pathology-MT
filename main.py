@@ -95,7 +95,7 @@ def main(gpu, ngpus_per_node, config, args):
 
     # FEATURE LOSS
     if config['model']['f_loss'] == 'mse':
-        f_loss = softmax_mse_loss
+        f_loss = mse_loss
     else:
         raise NotImplementedError
 
@@ -153,7 +153,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--warm_up', default=0, type=int)
 
-    parser.add_argument('--labeled_examples', default=10, type=int)
+    parser.add_argument('--labeled_examples', default=30, type=int)
 
     parser.add_argument('--weak_times', default=2, type=int)
 
@@ -196,7 +196,7 @@ if __name__ == '__main__':
     else:
         config['trainer']['epochs'] = args.epochs
 
-    config['ramp_up'] = math.ceil(config['trainer']['epochs'] * 1 / 5)
+    config['ramp_up'] = math.ceil(config['trainer']['epochs'] * 1 / 4)
 
     config['train_supervised']['batch_size'] = args.batch_size
     config['train_unsupervised']['batch_size'] = args.batch_size

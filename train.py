@@ -38,7 +38,7 @@ class Trainer(BaseTrainer):
                                      class_number=self.num_classes)
 
     @torch.no_grad()
-    def update_teachers(self, teacher_encoder, teacher_decoder, keep_rate=0.996):
+    def update_teachers(self, teacher_encoder, teacher_decoder, keep_rate=0.99):
         student_encoder_dict = self.model.module.encoder_s.state_dict()
         student_decoder_dict = self.model.module.decoder_s.state_dict()
         new_teacher_encoder_dict = OrderedDict()

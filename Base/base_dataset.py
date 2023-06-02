@@ -151,7 +151,7 @@ class BaseDataSet(Dataset):
         if isinstance(self.base_size, int):
             d, h, w = image.shape
             if self.augment and self.scale:
-                longside = random.randint(int(self.base_size * 0.8), int(self.base_size * 1.2))
+                longside = random.randint(int(self.base_size * 0.8), int(self.base_size * 1.3))
                 # longside = random.randint(int(self.base_size*0.5), int(self.base_size*1))
             else:
                 longside = self.base_size
@@ -182,7 +182,7 @@ class BaseDataSet(Dataset):
 
         elif (isinstance(self.base_size, list) or isinstance(self.base_size, tuple)) and len(self.base_size) == 3:
             if self.augment and self.scale:
-                scale = random.random() * 0.4 + 0.8  # Scaling between [1, 1.5]
+                scale = random.random() * 0.5 + 0.8  # Scaling between [1, 1.5]
                 d, h, w = int(self.base_size[0] * scale), int(self.base_size[1] * scale), int(self.base_size[2] * scale)
             else:
                 d, h, w = self.base_size
@@ -221,7 +221,7 @@ class BaseDataSet(Dataset):
             # kernel_size = kernel_size + 1 if kernel_size % 2 == 0 else kernel_size
             # blurring_image = transforms.GaussianBlur(kernel_size, sigma=(0.1, 2.0))
             # shift_intensity = RandStdShiftIntensity(0.03)
-            scale_intensity = RandScaleIntensity(0.5)
+            scale_intensity = RandScaleIntensity(1)
             shift_histogram = RandHistogramShift()
             smooth_image = RandGaussianSmooth()
             blurring_image = RandGaussianSharpen()
@@ -232,22 +232,22 @@ class BaseDataSet(Dataset):
             # if random.random() < 0.1:
             #     strong_aug = shift_intensity(strong_aug)
 
-            if random.random() < 0.4:
+            if random.random() < 1.0:
                 strong_aug = self._add_noise(strong_aug)
 
-            if random.random() < 0.4:
+            if random.random() < 0.5:
                 strong_aug = scale_intensity(strong_aug)
 
-            if random.random() < 0.4:
+            if random.random() < 0.5:
                 strong_aug = shift_histogram(strong_aug)
 
-            if random.random() < 0.4:
+            if random.random() < 0.5:
                 strong_aug = color_jitter(strong_aug)
 
-            if random.random() < 0.4:
+            if random.random() < 0.5:
                 strong_aug = smooth_image(strong_aug)
 
-            if random.random() < 0.4:
+            if random.random() < 0.5:
                 # strong_aug = blurring_image(strong_aug)
                 strong_aug = blurring_image(strong_aug)
 
