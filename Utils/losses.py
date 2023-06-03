@@ -193,10 +193,10 @@ def semi_dice_loss(inputs, targets,
         else:
             # ce_loss = CrossEntropyLoss(reduction='none')
             # loss_ce = ce_loss(inputs, torch.argmax(targets_real_prob, dim=1))
-            loss_mse = mse_loss(inputs, targets, reduction='none').mean(dim=1)
+            loss_mse = mse_loss(inputs, targets, reduction='none').sum(dim=1)
             targets = trans_target(torch.argmax(targets_real_prob, dim=1), num_classes=num_classes)
-            dice_loss = monai.losses.DiceLoss(softmax=True, squared_pred=False, reduction="none")
-            loss_dice = dice_loss(inputs, targets).mean(dim=1)
+            dice_loss = monai.losses.DiceLoss(softmax=True, squared_pred=True, reduction="none")
+            loss_dice = dice_loss(inputs, targets).sum(dim=1)
             ce_loss = CrossEntropyLoss(reduction='none')
             loss_ce = ce_loss(inputs, torch.argmax(targets_real_prob, dim=1))
             # positive_loss_mat = dice_loss(inputs, targets).mean(dim=1) + loss_mse

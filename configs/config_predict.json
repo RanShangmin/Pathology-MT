@@ -3,7 +3,7 @@
   "num_classes": 2,
   "data_dir": "./Data/pathology_data",
   "seg_dir": "./Data/pathology_seg",
-  "state_dir": "./saved/apply_pathology/10_Dice_0.6407_model_e778.pth",
+  "state_dir": "./best_model.pth",
   "gt_dir": "./Data/pathology_gt",
   "is_calculate": true
 }
