@@ -6,8 +6,8 @@
   "num_classes": 2,
   "ramp_up": 200,
   "unsupervised_w": 1.0,
-  "feature_w": 10.0,
-  "vat_w": 2.0,
+  "feature_w": 1.0,
+  "vat_w": 1.0,
   "weak_times": 2,
   "reflect_index": [
     0,

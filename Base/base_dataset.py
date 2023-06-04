@@ -221,7 +221,7 @@ class BaseDataSet(Dataset):
             # kernel_size = kernel_size + 1 if kernel_size % 2 == 0 else kernel_size
             # blurring_image = transforms.GaussianBlur(kernel_size, sigma=(0.1, 2.0))
             # shift_intensity = RandStdShiftIntensity(0.03)
-            scale_intensity = RandScaleIntensity(0.2)
+            scale_intensity = RandScaleIntensity(0.4)
             shift_histogram = RandHistogramShift()
             smooth_image = RandGaussianSmooth()
             blurring_image = RandGaussianSharpen()
@@ -262,7 +262,7 @@ class BaseDataSet(Dataset):
         # else:
         #     ni = NormalizeIntensity(subtrahend=np.zeros_like(image), channel_wise=True)
         # image = ni(image)
-        image /= 32.
+        image /= 64.
         # print("mean:{},std:{}".format(np.mean(image), np.std(image)))
         return image
 

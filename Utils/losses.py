@@ -193,7 +193,7 @@ def semi_dice_loss(inputs, targets,
         else:
             # ce_loss = CrossEntropyLoss(reduction='none')
             # loss_ce = ce_loss(inputs, torch.argmax(targets_real_prob, dim=1))
-            loss_mse = mse_loss(inputs, targets, reduction='none').sum(dim=1)
+            loss_mse = mse_loss(inputs, targets, reduction='none').mean(dim=1)
             targets = trans_target(torch.argmax(targets_real_prob, dim=1), num_classes=num_classes)
             dice_loss = monai.losses.DiceLoss(softmax=True, squared_pred=True, reduction="none")
             loss_dice = dice_loss(inputs, targets).sum(dim=1)
@@ -219,23 +219,11 @@ def softmax_mse_loss(input, target, reduction='mean'):
     assert input.shape == target.shape
     input_softmax = F.softmax(input, dim=1)
     target_softmax = F.softmax(target, dim=1)
-    # loss_fn = MSELoss()
-    mse_loss = (input_softmax - target_softmax) ** 2
-    if reduction == 'none':
-        return mse_loss
-    elif reduction == 'mean':
-        return mse_loss.mean()
-    else:
-        raise NotImplementedError
+    loss_fn = MSELoss(reduction=reduction)
+    return loss_fn(input_softmax, target_softmax)
 
 
 def mse_loss(input, target, reduction='mean'):
     assert input.shape == target.shape
-    # loss_fn = MSELoss()
-    mse_loss = (input - target) ** 2
-    if reduction == 'none':
-        return mse_loss
-    elif reduction == 'mean':
-        return mse_loss.mean()
-    else:
-        raise NotImplementedError
+    loss_fn = MSELoss(reduction=reduction)
+    return loss_fn(input, target)
