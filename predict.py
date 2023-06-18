@@ -30,7 +30,7 @@ def main(config):
         images.append(img_path)
 
     # define transforms for image and segmentation
-    imtrans = Compose([LoadImage(image_only=True, ensure_channel_first=True), ScaleIntensity()])
+    imtrans = Compose([LoadImage(image_only=True, ensure_channel_first=True)])
 
     if config['is_calculate']:
         if not os.path.exists(config['gt_dir']):
@@ -41,7 +41,7 @@ def main(config):
             seg_path = os.path.join(config['gt_dir'], name)
             segments.append(seg_path)
 
-        segtrans = Compose([LoadImage(image_only=True, ensure_channel_first=True), ScaleIntensity()])
+        segtrans = Compose([LoadImage(image_only=True, ensure_channel_first=True)])
 
     if not config['is_calculate']:
         img_ds = ArrayDataset(images, imtrans)
@@ -51,7 +51,7 @@ def main(config):
     data_loader = DataLoader(img_ds, batch_size=1, num_workers=1, pin_memory=torch.cuda.is_available())
     # sliding window inference for one image at every iteration
     dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=False)
-    post_trans = Compose([Activations(sigmoid=True), AsDiscrete(argmax=True, threshold=0.5)])
+    post_trans = Compose([Activations(softmax=True), AsDiscrete(argmax=True, threshold=0.5)])
 
     if not os.path.exists(config['seg_dir']):
         os.mkdir(config['seg_dir'])

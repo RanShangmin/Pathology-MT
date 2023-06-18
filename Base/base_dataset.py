@@ -202,8 +202,8 @@ class BaseDataSet(Dataset):
 
         return repeat_image
 
-    def _add_noise(self, image):
-        add_noise = RandGaussianNoise(std=(torch.std(image).item() / 1))
+    def _add_noise(self, image, std_rate=1):
+        add_noise = RandGaussianNoise(std=(torch.std(image).item() / std_rate))
         # add_noise = RandGaussianNoise(std=0.)
         return add_noise(image)
 
@@ -211,7 +211,7 @@ class BaseDataSet(Dataset):
         # print(image.dtype)
         weak_aug = self._repeat_weak(image)
         for i, img in enumerate(weak_aug):
-            weak_aug[i] = self._add_noise(img)
+            weak_aug[i] = self._add_noise(img, 16)
 
         if flag == "weak":
             return weak_aug
@@ -224,7 +224,7 @@ class BaseDataSet(Dataset):
             scale_intensity = RandScaleIntensity(0.4)
             shift_histogram = RandHistogramShift()
             smooth_image = RandGaussianSmooth()
-            blurring_image = RandGaussianSharpen()
+            sharpen_image = RandGaussianSharpen()
             color_jitter = RandAdjustContrast()
 
             strong_aug = image.clone()
@@ -236,20 +236,20 @@ class BaseDataSet(Dataset):
                 strong_aug = self._add_noise(strong_aug)
 
             if random.random() < 0.5:
-                strong_aug = scale_intensity(strong_aug)
+                if random.random() < 0.5:
+                    strong_aug = smooth_image(strong_aug)
+                else:
+                    # strong_aug = blurring_image(strong_aug)
+                    strong_aug = sharpen_image(strong_aug)
 
             if random.random() < 0.5:
-                strong_aug = shift_histogram(strong_aug)
-
-            if random.random() < 0.5:
-                strong_aug = color_jitter(strong_aug)
-
-            if random.random() < 0.5:
-                strong_aug = smooth_image(strong_aug)
-
-            if random.random() < 0.5:
-                # strong_aug = blurring_image(strong_aug)
-                strong_aug = blurring_image(strong_aug)
+                # intensity_change_p = random.random()
+                if random.random() < 0.3:
+                    strong_aug = scale_intensity(strong_aug)
+                if random.random() < 0.3:
+                    strong_aug = shift_histogram(strong_aug)
+                if random.random() < 0.3:
+                    strong_aug = color_jitter(strong_aug)
 
             return weak_aug, strong_aug
 
@@ -262,7 +262,7 @@ class BaseDataSet(Dataset):
         # else:
         #     ni = NormalizeIntensity(subtrahend=np.zeros_like(image), channel_wise=True)
         # image = ni(image)
-        image /= 64.
+        image /= 1
         # print("mean:{},std:{}".format(np.mean(image), np.std(image)))
         return image
 
