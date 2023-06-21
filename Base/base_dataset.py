@@ -182,7 +182,7 @@ class BaseDataSet(Dataset):
 
         elif (isinstance(self.base_size, list) or isinstance(self.base_size, tuple)) and len(self.base_size) == 3:
             if self.augment and self.scale:
-                scale = random.random() * 0.4 + 0.8  # Scaling between [1, 1.5]
+                scale = random.random() * 0.4 + 0.8  # Scaling between [0.8, 1.2]
                 d, h, w = int(self.base_size[0] * scale), int(self.base_size[1] * scale), int(self.base_size[2] * scale)
             else:
                 d, h, w = self.base_size
@@ -225,7 +225,7 @@ class BaseDataSet(Dataset):
             shift_histogram = RandHistogramShift()
             smooth_image = RandGaussianSmooth()
             sharpen_image = RandGaussianSharpen()
-            color_jitter = RandAdjustContrast()
+            adjust_image = RandAdjustContrast()
 
             strong_aug = image.clone()
             #
@@ -249,7 +249,7 @@ class BaseDataSet(Dataset):
                 if random.random() < 0.3:
                     strong_aug = shift_histogram(strong_aug)
                 if random.random() < 0.3:
-                    strong_aug = color_jitter(strong_aug)
+                    strong_aug = adjust_image(strong_aug)
 
             return weak_aug, strong_aug
 
